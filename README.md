@@ -1,7 +1,8 @@
-# AssetFlow
+# ![AssetFlow](src/app/favicon.ico) AssetFlow - 个人资产整理 Web App
 
 AssetFlow 是**只在本地电脑运行**的个人资产整理 Web App。
 系统设置存储在本地 JSON 文件中，资产主数据和汇率数据存储在本地 CSV 文件里。
+
 **注：本项目为使用AI vibe coding生成的，仅供参考。**
 
 ## 运行环境
