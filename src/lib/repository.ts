@@ -260,7 +260,7 @@ function ensureFolderExists(data: LocalDataBundle, folderId?: string | null) {
 }
 
 function sortFoldersForDisplay(folders: AssetFolder[]) {
-  return [...folders].sort((left, right) => left.sortOrder - right.sortOrder || left.createdAt.localeCompare(right.createdAt));
+  return [...folders].sort((left, right) => left.sortOrder - right.sortOrder);
 }
 
 function sortAssetsForDisplay(assets: Asset[]) {
@@ -375,13 +375,10 @@ const jsonRepository: Repository = {
         throw new Error("Folder name already exists");
       }
 
-      const now = new Date().toISOString();
       const folder: AssetFolder = {
         id: createId("folder"),
         name: trimmedName,
         sortOrder: data.assetFolders.length + 1,
-        createdAt: now,
-        updatedAt: now,
       };
       data.assetFolders.push(folder);
       return folder;
@@ -414,14 +411,12 @@ const jsonRepository: Repository = {
         {
           id: ROOT_FOLDER_ID,
           sortOrder: data.settings.rootFolderSortOrder,
-          createdAt: new Date(0).toISOString(),
         },
         ...data.assetFolders.map((folder) => ({
           id: folder.id,
           sortOrder: folder.sortOrder,
-          createdAt: folder.createdAt,
         })),
-      ].sort((left, right) => left.sortOrder - right.sortOrder || left.createdAt.localeCompare(right.createdAt));
+      ].sort((left, right) => left.sortOrder - right.sortOrder);
 
       const movingIndex = orderedItems.findIndex((item) => item.id === folderId);
       if (movingIndex === -1) {
@@ -436,7 +431,6 @@ const jsonRepository: Repository = {
 
       orderedItems.splice(beforeIndex >= 0 ? beforeIndex : orderedItems.length, 0, movingItem);
 
-      const now = new Date().toISOString();
       orderedItems.forEach((item, index) => {
         if (item.id === ROOT_FOLDER_ID) {
           data.settings.rootFolderSortOrder = index + 1;
@@ -446,9 +440,6 @@ const jsonRepository: Repository = {
         const folder = data.assetFolders.find((candidate) => candidate.id === item.id);
         if (folder) {
           folder.sortOrder = index + 1;
-          if (folder.id === folderId) {
-            folder.updatedAt = now;
-          }
         }
       });
 

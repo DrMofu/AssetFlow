@@ -32,8 +32,6 @@ export interface AssetFolder {
   id: string;
   name: string;
   sortOrder: number;
-  createdAt: string;
-  updatedAt: string;
 }
 
 export interface Asset {

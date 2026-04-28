@@ -658,10 +658,8 @@ export async function readAssetFolders() {
           id: folder.id,
           name: folder.name,
           sortOrder: Number.isFinite(Number(folder.sortOrder)) ? Number(folder.sortOrder) : index + 1,
-          createdAt: folder.createdAt,
-          updatedAt: folder.updatedAt,
         }))
-        .sort((left, right) => left.sortOrder - right.sortOrder || left.createdAt.localeCompare(right.createdAt))
+        .sort((left, right) => left.sortOrder - right.sortOrder)
     : [];
 }
 
