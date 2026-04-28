@@ -475,23 +475,96 @@ export function StorageActionsForm() {
   );
 }
 
-const COMMON_TIME_ZONES = [
-  "UTC",
-  "Asia/Shanghai",
-  "Asia/Hong_Kong",
-  "Asia/Tokyo",
-  "Asia/Singapore",
-  "Asia/Kolkata",
-  "Europe/London",
-  "Europe/Paris",
-  "Europe/Berlin",
-  "America/New_York",
-  "America/Chicago",
-  "America/Denver",
-  "America/Los_Angeles",
-  "Australia/Sydney",
-  "Pacific/Auckland",
+const REPRESENTATIVE_TIME_ZONE_POOL = [
+  { value: "Pacific/Pago_Pago", city: "Pago Pago" },
+  { value: "Pacific/Honolulu", city: "Honolulu" },
+  { value: "America/Anchorage", city: "Anchorage" },
+  { value: "America/Los_Angeles", city: "Los Angeles" },
+  { value: "America/Denver", city: "Denver" },
+  { value: "America/Chicago", city: "Chicago" },
+  { value: "America/New_York", city: "New York" },
+  { value: "America/Halifax", city: "Halifax" },
+  { value: "America/Argentina/Buenos_Aires", city: "Buenos Aires" },
+  { value: "Atlantic/South_Georgia", city: "South Georgia" },
+  { value: "Atlantic/Azores", city: "Azores" },
+  { value: "UTC", city: "UTC" },
+  { value: "Europe/London", city: "London" },
+  { value: "Europe/Berlin", city: "Berlin" },
+  { value: "Europe/Helsinki", city: "Helsinki" },
+  { value: "Europe/Moscow", city: "Moscow" },
+  { value: "Asia/Dubai", city: "Dubai" },
+  { value: "Asia/Karachi", city: "Karachi" },
+  { value: "Asia/Kolkata", city: "Mumbai/Kolkata" },
+  { value: "Asia/Dhaka", city: "Dhaka" },
+  { value: "Asia/Bangkok", city: "Bangkok" },
+  { value: "Asia/Shanghai", city: "Beijing/Shanghai" },
+  { value: "Asia/Tokyo", city: "Tokyo" },
+  { value: "Australia/Adelaide", city: "Adelaide" },
+  { value: "Australia/Sydney", city: "Sydney" },
+  { value: "Pacific/Noumea", city: "Noumea" },
+  { value: "Pacific/Auckland", city: "Auckland" },
+  { value: "Pacific/Chatham", city: "Chatham" },
+  { value: "Pacific/Tongatapu", city: "Tongatapu" },
+  { value: "Pacific/Kiritimati", city: "Kiritimati" },
 ] as const;
+
+type TimeZoneOption = {
+  value: string;
+  label: string;
+  offsetMinutes: number;
+};
+
+function getTimeZoneOffsetMinutes(timeZone: string) {
+  try {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone,
+      timeZoneName: "shortOffset",
+    }).formatToParts(new Date());
+    const timeZoneName = parts.find((part) => part.type === "timeZoneName")?.value ?? "GMT";
+
+    if (timeZoneName === "GMT" || timeZoneName === "UTC") {
+      return 0;
+    }
+
+    const match = timeZoneName.match(/^GMT([+-])(\d{1,2})(?::(\d{2}))?$/);
+    if (!match) {
+      return 0;
+    }
+
+    const [, sign, hours, minutes = "00"] = match;
+    const totalMinutes = Number(hours) * 60 + Number(minutes);
+    return sign === "-" ? -totalMinutes : totalMinutes;
+  } catch {
+    return 0;
+  }
+}
+
+function formatUtcOffsetLabel(offsetMinutes: number) {
+  const sign = offsetMinutes >= 0 ? "+" : "-";
+  const absoluteMinutes = Math.abs(offsetMinutes);
+  const hours = String(Math.floor(absoluteMinutes / 60)).padStart(2, "0");
+  const minutes = String(absoluteMinutes % 60).padStart(2, "0");
+  return `UTC${sign}${hours}:${minutes}`;
+}
+
+function getCompactTimeZoneOptions() {
+  const uniqueByOffset = new Map<number, TimeZoneOption>();
+
+  for (const zone of REPRESENTATIVE_TIME_ZONE_POOL) {
+    const offsetMinutes = getTimeZoneOffsetMinutes(zone.value);
+    if (uniqueByOffset.has(offsetMinutes)) {
+      continue;
+    }
+
+    uniqueByOffset.set(offsetMinutes, {
+      value: zone.value,
+      offsetMinutes,
+      label: `${formatUtcOffsetLabel(offsetMinutes)} ${zone.city}`,
+    });
+  }
+
+  return [...uniqueByOffset.values()].sort((left, right) => left.offsetMinutes - right.offsetMinutes);
+}
 
 function describeSystemTimeZone() {
   try {
@@ -514,13 +587,14 @@ export function PreferencesForm() {
   }, [settings.timeZone, settings.colorScheme]);
 
   const systemTimeZone = useMemo(() => describeSystemTimeZone(), []);
+  const availableTimeZones = useMemo(() => getCompactTimeZoneOptions(), []);
 
   // 自定义时区不在常用列表里时单独列出，避免被静默丢弃
   const customExtraTimeZone = useMemo(() => {
     if (!timeZone) return null;
-    if ((COMMON_TIME_ZONES as readonly string[]).includes(timeZone)) return null;
+    if (availableTimeZones.some((option) => option.value === timeZone)) return null;
     return timeZone;
-  }, [timeZone]);
+  }, [availableTimeZones, timeZone]);
 
   async function handleSubmit() {
     setSubmitting(true);
@@ -560,14 +634,14 @@ export function PreferencesForm() {
           {customExtraTimeZone ? (
             <option value={customExtraTimeZone}>{customExtraTimeZone}</option>
           ) : null}
-          {COMMON_TIME_ZONES.map((zone) => (
-            <option key={zone} value={zone}>
-              {zone}
+          {availableTimeZones.map((zone) => (
+            <option key={zone.value} value={zone.value}>
+              {zone.label}
             </option>
           ))}
         </select>
         <span className="text-xs af-text-muted">
-          影响日期与时间的显示格式。留"跟随系统"会按当前设备的时区显示。
+          影响日期与时间的显示格式。留“跟随系统”会按当前设备的时区显示。
         </span>
       </label>
 
