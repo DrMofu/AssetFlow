@@ -450,7 +450,19 @@ function serializeFxDailyRateRow(
   };
 }
 
-export async function ensureStoreFiles() {
+let _ensureStoreFilesPromise: Promise<void> | null = null;
+
+export function ensureStoreFiles(): Promise<void> {
+  if (!_ensureStoreFilesPromise) {
+    _ensureStoreFilesPromise = _doEnsureStoreFiles().catch((err) => {
+      _ensureStoreFilesPromise = null;
+      throw err;
+    });
+  }
+  return _ensureStoreFilesPromise;
+}
+
+async function _doEnsureStoreFiles() {
   await mkdir(dataDir, { recursive: true });
   await mkdir(userDataDir, { recursive: true });
   await mkdir(systemDataDir, { recursive: true });
