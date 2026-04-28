@@ -90,6 +90,13 @@ const aggregateSeriesPalette: Record<string, string> = {
 
 type HistorySeriesColorMode = "type" | "generic";
 
+const hoverCursor = {
+  stroke: "var(--text-secondary)",
+  strokeWidth: 1,
+  strokeDasharray: "5 4",
+  strokeOpacity: 0.45,
+};
+
 const tooltipStyle = {
   borderRadius: 20,
   border: "1px solid var(--chart-tooltip-border)",
@@ -543,7 +550,7 @@ function HistoryTooltip({
 }) {
   return (
     <Tooltip
-      cursor={false}
+      cursor={hoverCursor}
       content={(props) => (
         <HistorySeriesTooltip
           active={props.active}
@@ -651,7 +658,7 @@ export function TrendAreaChart({
             tickFormatter={(value: number) => formatMaybeMasked(formatCompactCurrency(value, currency), privacyMode)}
           />
           <Tooltip
-            cursor={false}
+            cursor={hoverCursor}
             contentStyle={tooltipStyle}
             labelFormatter={(label) => formatMaybeMasked(formatChartTooltipLabel(label), privacyMode)}
             formatter={(value) => formatTooltipCurrency(value, currency, privacyMode)}
@@ -702,7 +709,7 @@ export function FxTrendLineChart({
             tickFormatter={(value: number) => value.toFixed(2)}
           />
           <Tooltip
-            cursor={false}
+            cursor={hoverCursor}
             contentStyle={tooltipStyle}
             labelFormatter={(label) => formatChartTooltipLabel(label)}
             formatter={(value) => [`${Number(value).toFixed(4)}`, "USD/CNY"]}
@@ -1363,7 +1370,7 @@ export function AssetTimelineChart({
                   }
                 />
               ) : null}
-              <Tooltip cursor={false} content={(props) => <AssetTimelineTooltip {...props} detail={detail} />} />
+              <Tooltip cursor={hoverCursor} content={(props) => <AssetTimelineTooltip {...props} detail={detail} />} />
               <Line
                 yAxisId="value"
                 type="monotone"
