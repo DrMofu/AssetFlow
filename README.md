@@ -23,6 +23,16 @@ npm run dev
 
 打开 [http://localhost:3000](http://localhost:3000)
 
+## 界面展示
+
+![总览折线图](https://github.com/user-attachments/assets/df2e723f-dac7-4a38-a8f2-adec800e6619)
+
+![资产分析组件](https://github.com/user-attachments/assets/92799705-dedd-4325-8595-6a6683339a31)
+
+![资产列表](https://github.com/user-attachments/assets/f7b46b9b-256c-4c5c-9389-5018dbbc1f7f)
+
+![资产走势图](https://github.com/user-attachments/assets/8e8f8eec-82e1-4543-a31e-a69c82a77e37)
+
 ## 使用说明
 
 ### 股票价格自动补齐
