@@ -18,26 +18,37 @@ export type AssetMilestoneItem = {
   isNext: boolean;
 };
 
-type DurationDisplayMode = "calendar" | "days";
-
-function formatElapsedDays(days: number, mode: DurationDisplayMode) {
-  if (mode === "days") {
-    return `${Math.max(0, days)} 天`;
-  }
+function formatElapsedCalendarDays(days: number) {
   if (days <= 0) {
     return "0 天";
-  }
-  if (days < 365) {
-    return `${days} 天`;
   }
 
   const years = Math.floor(days / 365);
   const remainingDays = days % 365;
-  if (remainingDays < 30) {
-    return `${years} 年`;
+  const months = Math.floor(remainingDays / 30);
+  const calendarDays = remainingDays % 30;
+  const parts: string[] = [];
+
+  if (years > 0) {
+    parts.push(`${years} 年`);
+    if (months > 0) {
+      parts.push(`${months} 个月`);
+    }
+
+    return parts.join(" ");
+  }
+  if (months > 0) {
+    parts.push(`${months} 个月`);
+  }
+  if (calendarDays > 0 || !parts.length) {
+    parts.push(`${calendarDays} 天`);
   }
 
-  return `${years} 年 ${Math.floor(remainingDays / 30)} 个月`;
+  return parts.join(" ");
+}
+
+function formatElapsedDayCount(days: number) {
+  return `${Math.max(0, days)} 天`;
 }
 
 function normalizeTargets(targets: number[]) {
@@ -48,6 +59,25 @@ function normalizeTargets(targets: number[]) {
   )]
     .sort((left, right) => left - right)
     .slice(0, ASSET_MILESTONE_TARGET_LIMIT);
+}
+
+function clampPercent(value: number) {
+  return Math.min(100, Math.max(0, value));
+}
+
+function milestoneStatusLabel(milestone: AssetMilestoneItem) {
+  if (milestone.reachedDate) return "已达成";
+  if (milestone.isNext) return "下一个目标";
+  return "未达成";
+}
+
+function calculateSegmentProgress(current: number, start: number, end: number) {
+  const range = end - start;
+  if (range <= 0) {
+    return current >= end ? 100 : 0;
+  }
+
+  return clampPercent(((current - start) / range) * 100);
 }
 
 export function AssetMilestones({
@@ -67,7 +97,6 @@ export function AssetMilestones({
   const [draftAmount, setDraftAmount] = useState("");
   const [localTargets, setLocalTargets] = useState(targets);
   const [saving, setSaving] = useState(false);
-  const [durationDisplayMode, setDurationDisplayMode] = useState<DurationDisplayMode>("calendar");
 
   useEffect(() => {
     setLocalTargets(targets);
@@ -127,88 +156,183 @@ export function AssetMilestones({
   }
 
   const busy = saving || isUpdating;
-  const durationModeLabel = durationDisplayMode === "calendar" ? "按天数显示" : "按年月显示";
+  const reachedCount = milestones.filter((milestone) => milestone.reachedDate).length;
+  const nextMilestone = milestones.find((milestone) => milestone.isNext);
+  const currentAssetValue = nextMilestone
+    ? Math.max(0, nextMilestone.target - nextMilestone.remaining)
+    : undefined;
+  const nextMilestoneIndex = nextMilestone ? milestones.indexOf(nextMilestone) : -1;
+  const previousTarget = nextMilestoneIndex > 0 ? milestones[nextMilestoneIndex - 1]?.target ?? 0 : 0;
+  const segmentProgressPct = nextMilestone && currentAssetValue !== undefined
+    ? calculateSegmentProgress(currentAssetValue, previousTarget, nextMilestone.target)
+    : 100;
 
   return (
-    <section className="af-card rounded-[34px] p-6">
-      <header className="mb-5 flex items-start justify-between gap-4 border-b pb-5" style={{ borderColor: "color-mix(in srgb, var(--border-color) 55%, transparent)" }}>
-        <div>
-          <p className="af-text-muted text-[11px] font-semibold uppercase tracking-[0.28em]">资产里程碑</p>
-          <h3 className="mt-2 text-2xl font-semibold tracking-tight" style={{ color: "var(--text-primary)" }}>
-            首次达到目标
-          </h3>
+    <section className="af-card overflow-hidden rounded-[34px] p-6">
+      <header
+        className="mb-6 border-b pb-6"
+        style={{ borderColor: "color-mix(in srgb, var(--border-color) 55%, transparent)" }}
+      >
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <p className="af-text-muted text-[11px] font-semibold uppercase tracking-[0.28em]">资产里程碑</p>
+            <h3 className="mt-2 text-2xl font-semibold tracking-tight" style={{ color: "var(--text-primary)" }}>
+              首次达到目标
+            </h3>
+          </div>
+          <div className="flex shrink-0 items-center">
+            <button
+              type="button"
+              onClick={() => setExpanded((current) => !current)}
+              className="af-button-secondary rounded-full px-4 py-2 text-sm font-semibold"
+            >
+              {expanded ? "收起" : "修改里程碑"}
+            </button>
+          </div>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setDurationDisplayMode((current) => (current === "calendar" ? "days" : "calendar"))}
-            className="af-button-secondary inline-flex h-9 w-9 items-center justify-center rounded-full text-sm font-bold tabular-nums"
-            aria-label={durationModeLabel}
-            title={durationModeLabel}
-          >
-            {durationDisplayMode === "calendar" ? "天" : "年"}
-          </button>
-          <button
-            type="button"
-            onClick={() => setExpanded((current) => !current)}
-            className="af-button-secondary rounded-full px-4 py-2 text-sm font-semibold"
-          >
-            {expanded ? "收起" : "修改里程碑"}
-          </button>
-        </div>
+
+        {milestones.length ? (
+          <div className="mt-6 max-w-xl">
+            <p className="af-text-muted text-xs font-semibold">当前进度</p>
+            <div className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-1">
+              <span className="text-xl font-semibold tabular-nums tracking-tight" style={{ color: "var(--text-primary)" }}>
+                {reachedCount} / {milestones.length}
+              </span>
+              <span className="text-xl font-semibold tracking-tight" style={{ color: "var(--text-primary)" }}>
+                已达成
+              </span>
+            </div>
+            <p className="af-text-muted mt-2 text-xs">
+              {nextMilestone ? (
+                <>
+                  下一目标{" "}
+                  <SensitiveValue
+                    value={formatCompactCurrency(nextMilestone.target, currency)}
+                    className="inline tabular-nums"
+                  />{" "}
+                  · 还差{" "}
+                  <SensitiveValue
+                    value={formatCompactCurrency(nextMilestone.remaining, currency)}
+                    className="inline tabular-nums"
+                  />
+                </>
+              ) : (
+                "全部目标已达成"
+              )}
+            </p>
+          </div>
+        ) : null}
       </header>
 
       {milestones.length ? (
-        <div className="grid gap-2">
-          {milestones.map((milestone) => (
-            <div
-              key={milestone.target}
-              className="af-card-soft grid grid-cols-[minmax(7rem,0.8fr)_minmax(0,1fr)] items-center gap-4 rounded-[20px] px-4 py-3"
-              style={{
-                boxShadow: milestone.isNext
-                  ? "0 0 0 2px color-mix(in srgb, var(--text-primary) 16%, transparent)"
-                  : undefined,
-              }}
-            >
-              <div className="min-w-0">
-                <SensitiveValue
-                  value={formatCompactCurrency(milestone.target, currency)}
-                  className="block text-lg font-semibold tabular-nums"
-                />
-                <p className="af-text-muted mt-0.5 text-xs">
-                  {milestone.reachedDate ? "已达成" : milestone.isNext ? "下一个目标" : "未达成"}
-                </p>
-              </div>
+        <div className="relative">
+          <div
+            className="absolute bottom-5 left-4 top-5 w-px sm:left-5"
+            style={{ background: "color-mix(in srgb, var(--border-color) 75%, transparent)" }}
+          />
+          {milestones.map((milestone) => {
+            const reached = Boolean(milestone.reachedDate);
+            const statusLabel = milestoneStatusLabel(milestone);
+            const reachedNodeColor = "color-mix(in srgb, var(--text-secondary) 42%, white)";
+            const nodeColor = reached
+              ? reachedNodeColor
+              : milestone.isNext
+                ? "var(--text-secondary)"
+                : "var(--border-color)";
 
-              <div className="min-w-0 text-right">
-                {milestone.reachedDate ? (
-                  <>
-                    <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+            return (
+              <div
+                key={milestone.target}
+                className="relative grid gap-3 border-b py-5 pl-12 last:border-b-0 sm:grid-cols-[minmax(0,1fr)_minmax(8rem,0.42fr)] sm:items-start sm:gap-5 sm:pl-16"
+                style={{ borderColor: "color-mix(in srgb, var(--border-color) 45%, transparent)" }}
+              >
+                <div
+                  className="absolute left-[0.38rem] top-6 z-10 flex h-6 w-6 items-center justify-center rounded-full sm:left-2"
+                  style={{
+                    border: `2px solid ${nodeColor}`,
+                    background: reached ? reachedNodeColor : "var(--surface-bg)",
+                    boxShadow: reached || milestone.isNext
+                      ? "0 0 0 6px color-mix(in srgb, var(--text-secondary) 10%, transparent), 0 10px 24px color-mix(in srgb, var(--text-secondary) 13%, transparent)"
+                      : undefined,
+                  }}
+                >
+                  {reached ? (
+                    <span className="text-xs font-black leading-none" style={{ color: "var(--surface-bg)" }}>
+                      ✓
+                    </span>
+                  ) : null}
+                </div>
+
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <SensitiveValue
+                      value={formatCompactCurrency(milestone.target, currency)}
+                      className={`block text-base font-semibold tracking-tight tabular-nums sm:text-lg ${reached || milestone.isNext ? "" : "af-text-muted"}`}
+                    />
+                    <span
+                      className="rounded-full px-2 py-0.5 text-[11px] font-semibold"
+                      style={{
+                        background: reached
+                          ? "color-mix(in srgb, var(--up-text) 14%, transparent)"
+                          : "var(--surface-bg-muted)",
+                        color: reached ? "var(--up-text)" : "var(--text-secondary)",
+                      }}
+                    >
+                      {statusLabel}
+                    </span>
+                  </div>
+
+                  {reached ? (
+                    <p className="af-text-muted mt-2 text-[11px] sm:text-xs">
+                      总用时 {formatElapsedCalendarDays(milestone.elapsedDays ?? 0)}
+                      <span className="mx-2">·</span>
+                      阶段 {formatElapsedDayCount(milestone.stageDays ?? 0)}
+                    </p>
+                  ) : null}
+                </div>
+
+                <div className="min-w-0 sm:text-right">
+                  {milestone.reachedDate ? (
+                    <p className="text-xs font-semibold tabular-nums" style={{ color: "var(--text-primary)" }}>
                       {formatCalendarDateLabel(
                         milestone.reachedDate,
                         settings.timeZone,
                         settings.dateFormatPreference,
                       )}
                     </p>
-                    <p className="af-text-muted mt-0.5 text-xs">
-                      总用时 {formatElapsedDays(milestone.elapsedDays ?? 0, durationDisplayMode)}
-                    </p>
-                    <p className="af-text-muted mt-0.5 text-xs">
-                      阶段 {formatElapsedDays(milestone.stageDays ?? 0, durationDisplayMode)}
-                    </p>
-                  </>
-                ) : (
-                  <>
+                  ) : (
                     <SensitiveValue
-                      value={`还差 ${formatCompactCurrency(milestone.remaining, currency)}`}
-                      className="block text-sm font-semibold tabular-nums"
+                      value={
+                        milestone.isNext && currentAssetValue !== undefined
+                          ? `${formatCurrency(currentAssetValue, currency)} (${milestone.progressPct.toFixed(0)}%)`
+                          : `还差 ${formatCompactCurrency(milestone.remaining, currency)}`
+                      }
+                      className={`block text-xs font-semibold tabular-nums ${milestone.isNext ? "text-[var(--text-primary)]" : "af-text-muted"}`}
                     />
-                    <p className="af-text-muted mt-0.5 text-xs">{milestone.progressPct.toFixed(0)}%</p>
-                  </>
-                )}
+                  )}
+                </div>
+
+                {milestone.isNext && currentAssetValue !== undefined ? (
+                  <div className="sm:col-span-2">
+                    <div className="h-2.5 overflow-hidden rounded-full" style={{ background: "var(--surface-bg-muted)" }}>
+                      <div
+                        className="h-full rounded-full"
+                        style={{
+                          width: `${segmentProgressPct}%`,
+                          background: "var(--up-text)",
+                          boxShadow: "12px 0 24px color-mix(in srgb, var(--up-text) 24%, transparent)",
+                        }}
+                      />
+                    </div>
+                    <div className="af-text-muted mt-3 flex items-center justify-between text-[11px] tabular-nums">
+                      <SensitiveValue value={formatCompactCurrency(previousTarget, currency)} />
+                      <SensitiveValue value={formatCompactCurrency(milestone.target, currency)} />
+                    </div>
+                  </div>
+                ) : null}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       ) : (
         <div className="af-card-soft rounded-[20px] px-4 py-4">
