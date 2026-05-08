@@ -25,6 +25,7 @@
   --chart-grid: #eef1ea;
   --chart-tooltip-border: rgba(15, 23, 42, 0.08);
   --chart-tooltip-shadow: 0 20px 50px rgba(15, 23, 42, 0.12);
+  --milestone-reached-node: color-mix(in srgb, var(--text-secondary) 64%, white);
 
   /* 涨跌色（默认：绿涨红跌） */
   --up-text: #00a53c;
@@ -77,6 +78,7 @@
   --chart-grid: rgba(255, 255, 255, 0.08);
   --chart-tooltip-border: rgba(255, 255, 255, 0.1);
   --chart-tooltip-shadow: 0 20px 50px rgba(0, 0, 0, 0.32);
+  --milestone-reached-node: color-mix(in srgb, var(--text-secondary) 30%, white);
 }
 
 @theme inline {

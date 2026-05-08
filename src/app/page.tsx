@@ -492,9 +492,9 @@ export default async function DashboardPage({
           <div className="af-card flex h-[27rem] flex-col overflow-hidden rounded-[34px] p-6">
             <div className="mb-6 flex items-end justify-between gap-4">
               <div>
-                <p className="af-text-muted text-xs uppercase tracking-[0.24em]">资产分布</p>
+                <p className="af-text-muted text-xs uppercase tracking-[0.24em]">Asset Allocation</p>
                 <h3 className="mt-2 text-2xl font-semibold tracking-tight" style={{ color: "var(--text-primary)" }}>
-                  你的资产构成
+                  资产分布
                 </h3>
               </div>
               <div className="flex items-center gap-4">
@@ -557,9 +557,9 @@ export default async function DashboardPage({
           <div className="af-card rounded-[34px] p-6">
             <div className="mb-6">
               <div>
-                <p className="af-text-muted text-xs uppercase tracking-[0.24em]">股票分析</p>
+                <p className="af-text-muted text-xs uppercase tracking-[0.24em]">Securities</p>
                 <h3 className="mt-2 text-2xl font-semibold tracking-tight" style={{ color: "var(--text-primary)" }}>
-                  当前持仓分析
+                  股票分析
                 </h3>
               </div>
             </div>
@@ -610,9 +610,9 @@ export default async function DashboardPage({
           <div className="af-card rounded-[34px] p-6">
             <div className="mb-6 flex items-end justify-between gap-4">
               <div>
-                <p className="af-text-muted text-xs uppercase tracking-[0.24em]">人民币 / 美元汇率</p>
+                <p className="af-text-muted text-xs uppercase tracking-[0.24em]">Exchange Rate</p>
                 <h3 className="mt-2 text-2xl font-semibold tracking-tight" style={{ color: "var(--text-primary)" }}>
-                  USD/CNY 走势
+                  人民币 / 美元汇率
                 </h3>
               </div>
               <div className="text-right">

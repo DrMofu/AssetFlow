@@ -85,9 +85,9 @@ export function MonthlyReturnsGrid({
   return (
     <section className="af-card rounded-[34px] p-6">
       <header className="mb-5 border-b pb-5" style={dividerStyle}>
-        <p className="af-text-muted text-[11px] font-semibold uppercase tracking-[0.28em]">月度收益</p>
+        <p className="af-text-muted text-[11px] font-semibold uppercase tracking-[0.28em]">Monthly Returns</p>
         <h3 className="mt-2 text-2xl font-semibold tracking-tight" style={{ color: "var(--text-primary)" }}>
-          历史月度收益
+          月度收益
         </h3>
       </header>
 

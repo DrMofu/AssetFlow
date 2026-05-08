@@ -145,58 +145,59 @@ export function AssetCalendar({
     <section className="af-card flex h-[48rem] flex-col rounded-[34px] p-6">
       <header className="mb-5 flex items-end justify-between gap-4 border-b pb-5" style={dividerStyle}>
         <div>
-          <p className="af-text-muted text-[11px] font-semibold uppercase tracking-[0.28em]">资产日历</p>
-          <div className="mt-2 flex items-baseline gap-3">
+          <p className="af-text-muted text-[11px] font-semibold uppercase tracking-[0.28em]">Asset Calendar</p>
+          <div className="mt-2 flex flex-wrap items-baseline gap-x-3 gap-y-1">
             <h3 className="text-2xl font-semibold tracking-tight" style={{ color: "var(--text-primary)" }}>
-              {monthLabel}
+              资产日历
             </h3>
-            {hasMonthlyChange ? (
-              <div
-                className="relative"
-                onMouseEnter={() => setShowMonthlyTooltip(true)}
-                onMouseLeave={() => setShowMonthlyTooltip(false)}
-              >
+            <div
+              className="relative flex items-baseline gap-2"
+              onMouseEnter={() => setShowMonthlyTooltip(true)}
+              onMouseLeave={() => setShowMonthlyTooltip(false)}
+            >
+              <span className="af-text-muted text-sm font-semibold tabular-nums">{monthLabel}</span>
+              {hasMonthlyChange ? (
                 <SensitiveValue
                   value={`${monthlyChange >= 0 ? "+" : ""}${formatCompactCurrency(monthlyChange, currency)}`}
-                  className={`cursor-default text-xl font-semibold tabular-nums ${monthlyChange >= 0 ? "af-text-up" : "af-text-down"}`}
+                  className={`cursor-default text-sm font-semibold tabular-nums ${monthlyChange >= 0 ? "af-text-up" : "af-text-down"}`}
                 />
-                {showMonthlyTooltip && monthlyContributors.length > 0 ? (
-                  <div
-                    className="pointer-events-none absolute left-0 top-full z-20 mt-2 rounded-2xl border p-3 shadow-xl backdrop-blur-sm"
-                    style={{
-                      width: 224,
-                      background: "color-mix(in srgb, var(--surface-bg) 88%, transparent)",
-                      borderColor: "color-mix(in srgb, var(--border-color) 120%, transparent)",
-                    }}
+              ) : null}
+              {showMonthlyTooltip && monthlyContributors.length > 0 ? (
+                <div
+                  className="pointer-events-none absolute left-0 top-full z-20 mt-2 rounded-2xl border p-3 shadow-xl backdrop-blur-sm"
+                  style={{
+                    width: 224,
+                    background: "color-mix(in srgb, var(--surface-bg) 88%, transparent)",
+                    borderColor: "color-mix(in srgb, var(--border-color) 120%, transparent)",
+                  }}
+                >
+                  <p
+                    className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em]"
+                    style={{ color: "var(--text-secondary)" }}
                   >
-                    <p
-                      className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em]"
-                      style={{ color: "var(--text-secondary)" }}
-                    >
-                      本月主要变化来源
-                    </p>
-                    <ul className="space-y-1.5">
-                      {monthlyContributors.map((c) => (
-                        <li key={c.assetId} className="flex items-center justify-between gap-2">
-                          <span
-                            className="min-w-0 truncate text-[13px] font-medium"
-                            style={{ color: "var(--text-primary)" }}
-                          >
-                            {c.symbol ?? c.name}
-                          </span>
-                          <SensitiveValue
-                            value={`${c.change >= 0 ? "+" : ""}${formatCompactCurrency(c.change, currency)}`}
-                            className={`shrink-0 text-[13px] font-semibold tabular-nums ${
-                              c.change >= 0 ? "af-text-up" : "af-text-down"
-                            }`}
-                          />
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ) : null}
-              </div>
-            ) : null}
+                    本月主要变化来源
+                  </p>
+                  <ul className="space-y-1.5">
+                    {monthlyContributors.map((c) => (
+                      <li key={c.assetId} className="flex items-center justify-between gap-2">
+                        <span
+                          className="min-w-0 truncate text-[13px] font-medium"
+                          style={{ color: "var(--text-primary)" }}
+                        >
+                          {c.symbol ?? c.name}
+                        </span>
+                        <SensitiveValue
+                          value={`${c.change >= 0 ? "+" : ""}${formatCompactCurrency(c.change, currency)}`}
+                          className={`shrink-0 text-[13px] font-semibold tabular-nums ${
+                            c.change >= 0 ? "af-text-up" : "af-text-down"
+                          }`}
+                        />
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+            </div>
           </div>
         </div>
         <div className="flex items-center gap-2">

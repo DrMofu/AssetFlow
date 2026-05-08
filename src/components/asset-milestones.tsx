@@ -67,8 +67,8 @@ function clampPercent(value: number) {
 
 function milestoneStatusLabel(milestone: AssetMilestoneItem) {
   if (milestone.reachedDate) return "已达成";
-  if (milestone.isNext) return "下一个目标";
-  return "未达成";
+  if (milestone.isNext) return "当前目标";
+  return "未开始";
 }
 
 function calculateSegmentProgress(current: number, start: number, end: number) {
@@ -156,7 +156,6 @@ export function AssetMilestones({
   }
 
   const busy = saving || isUpdating;
-  const reachedCount = milestones.filter((milestone) => milestone.reachedDate).length;
   const nextMilestone = milestones.find((milestone) => milestone.isNext);
   const currentAssetValue = nextMilestone
     ? Math.max(0, nextMilestone.target - nextMilestone.remaining)
@@ -175,9 +174,9 @@ export function AssetMilestones({
       >
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <p className="af-text-muted text-[11px] font-semibold uppercase tracking-[0.28em]">资产里程碑</p>
+            <p className="af-text-muted text-[11px] font-semibold uppercase tracking-[0.28em]">Milestones</p>
             <h3 className="mt-2 text-2xl font-semibold tracking-tight" style={{ color: "var(--text-primary)" }}>
-              首次达到目标
+              资产里程碑
             </h3>
           </div>
           <div className="flex shrink-0 items-center">
@@ -191,37 +190,6 @@ export function AssetMilestones({
           </div>
         </div>
 
-        {milestones.length ? (
-          <div className="mt-6 max-w-xl">
-            <p className="af-text-muted text-xs font-semibold">当前进度</p>
-            <div className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-1">
-              <span className="text-xl font-semibold tabular-nums tracking-tight" style={{ color: "var(--text-primary)" }}>
-                {reachedCount} / {milestones.length}
-              </span>
-              <span className="text-xl font-semibold tracking-tight" style={{ color: "var(--text-primary)" }}>
-                已达成
-              </span>
-            </div>
-            <p className="af-text-muted mt-2 text-xs">
-              {nextMilestone ? (
-                <>
-                  下一目标{" "}
-                  <SensitiveValue
-                    value={formatCompactCurrency(nextMilestone.target, currency)}
-                    className="inline tabular-nums"
-                  />{" "}
-                  · 还差{" "}
-                  <SensitiveValue
-                    value={formatCompactCurrency(nextMilestone.remaining, currency)}
-                    className="inline tabular-nums"
-                  />
-                </>
-              ) : (
-                "全部目标已达成"
-              )}
-            </p>
-          </div>
-        ) : null}
       </header>
 
       {milestones.length ? (
@@ -233,7 +201,7 @@ export function AssetMilestones({
           {milestones.map((milestone) => {
             const reached = Boolean(milestone.reachedDate);
             const statusLabel = milestoneStatusLabel(milestone);
-            const reachedNodeColor = "color-mix(in srgb, var(--text-secondary) 42%, white)";
+            const reachedNodeColor = "var(--milestone-reached-node)";
             const nodeColor = reached
               ? reachedNodeColor
               : milestone.isNext
@@ -286,7 +254,7 @@ export function AssetMilestones({
                     <p className="af-text-muted mt-2 text-[11px] sm:text-xs">
                       总用时 {formatElapsedCalendarDays(milestone.elapsedDays ?? 0)}
                       <span className="mx-2">·</span>
-                      阶段 {formatElapsedDayCount(milestone.stageDays ?? 0)}
+                      阶段用时 {formatElapsedDayCount(milestone.stageDays ?? 0)}
                     </p>
                   ) : null}
                 </div>
