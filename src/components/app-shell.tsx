@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { clsx } from "clsx";
@@ -106,10 +107,21 @@ function AppShellFrame({ children }: { children: React.ReactNode }) {
       >
         <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-3 px-4 py-3 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
           <div className="flex items-center gap-6">
-            <h1 className="text-xl font-semibold tracking-tight">
-              AssetFlow
-              <span className="ml-2 text-xs font-normal opacity-40">v{devInfo.version}</span>
-            </h1>
+            <Link href="/" className="flex items-center gap-2.5" aria-label="AssetFlow 总览">
+              <Image
+                src="/favicon.ico"
+                alt=""
+                width={28}
+                height={28}
+                className="h-7 w-7 rounded-md"
+                aria-hidden="true"
+                unoptimized
+              />
+              <span className="text-xl font-semibold tracking-tight">
+                AssetFlow
+                <span className="ml-2 text-xs font-normal opacity-40">v{devInfo.version}</span>
+              </span>
+            </Link>
             <nav className="flex flex-wrap gap-2">
               {navItems.map((item) => {
                 const isActive =

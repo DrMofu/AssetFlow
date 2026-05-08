@@ -3,7 +3,7 @@ import { addDays, subDays } from "date-fns";
 import { parseCsv } from "@/lib/csv";
 import { invalidatePortfolioCache } from "@/lib/cache";
 import { ensureStoreFiles, readFxDailyRates, writeFxDailyRates } from "@/lib/store";
-import { getLocalDayKey } from "@/lib/utils";
+import { getLatestFxAvailableDayKey } from "@/lib/utils";
 import type { FxCoverage, FxDailyRateRow, FxRateSnapshot } from "@/lib/types";
 
 const FRANKFURTER_SOURCE = "Frankfurter (ECB-backed)";
@@ -209,8 +209,8 @@ export async function syncFxDailyHistory(startDate: string) {
   await ensureStoreFiles();
 
   const requiredStart = toDayKey(startDate);
-  const today = getLocalDayKey();
-  if (requiredStart > today) {
+  const latestEligibleDay = getLatestFxAvailableDayKey();
+  if (requiredStart > latestEligibleDay) {
     return getFxCoverage();
   }
 
@@ -220,7 +220,7 @@ export async function syncFxDailyHistory(startDate: string) {
   const fetchedRows: FxDailyRateRow[] = [];
 
   if (!existingRows.length) {
-    fetchedRows.push(...(await fetchFxRange(requiredStart, today)));
+    fetchedRows.push(...(await fetchFxRange(requiredStart, latestEligibleDay)));
   } else {
     if (first && requiredStart < first) {
       fetchedRows.push(
@@ -228,11 +228,11 @@ export async function syncFxDailyHistory(startDate: string) {
       );
     }
 
-    if (last && last < today) {
+    if (last && last < latestEligibleDay) {
       fetchedRows.push(
         ...(await fetchFxRange(
           toDayKey(addDays(new Date(`${last}T00:00:00.000Z`), 1)),
-          today,
+          latestEligibleDay,
         )),
       );
     }

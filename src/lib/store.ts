@@ -4,6 +4,7 @@ import { copyFile, mkdir, readFile, readdir, rename, rm, stat, unlink, writeFile
 import path from "node:path";
 
 import { parseCsv, serializeCsv } from "@/lib/csv";
+import { ASSET_MILESTONE_TARGET_LIMIT } from "@/lib/constants";
 import type {
   Asset,
   AssetFolder,
@@ -223,7 +224,45 @@ function normalizeSettings(raw: Partial<UserSettings>) {
     rootFolderSortOrder: Math.max(0, Number(raw.rootFolderSortOrder ?? 0)),
     timeZone: typeof raw.timeZone === "string" ? raw.timeZone : "",
     colorScheme,
+    assetMilestoneTargets: normalizeAssetMilestoneTargets(raw.assetMilestoneTargets),
   } satisfies UserSettings;
+}
+
+function normalizeMilestoneTargetList(value: unknown) {
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+
+  const targets = [...new Set(
+    value
+      .map((item) => Number(item))
+      .filter((item) => Number.isFinite(item) && item > 0)
+      .map((item) => Math.round(item * 100) / 100),
+  )]
+    .sort((left, right) => left - right)
+    .slice(0, ASSET_MILESTONE_TARGET_LIMIT);
+
+  return targets.length ? targets : undefined;
+}
+
+function normalizeAssetMilestoneTargets(value: unknown): Partial<Record<CurrencyCode, number[]>> {
+  if (!value || typeof value !== "object") {
+    return {};
+  }
+
+  const raw = value as Partial<Record<CurrencyCode, unknown>>;
+  const targets: Partial<Record<CurrencyCode, number[]>> = {};
+  const usdTargets = normalizeMilestoneTargetList(raw.USD);
+  const cnyTargets = normalizeMilestoneTargetList(raw.CNY);
+
+  if (usdTargets) {
+    targets.USD = usdTargets;
+  }
+  if (cnyTargets) {
+    targets.CNY = cnyTargets;
+  }
+
+  return targets;
 }
 
 function normalizeSyncStatus(raw: Partial<SyncStatusSnapshot> | null | undefined): SyncStatusSnapshot {

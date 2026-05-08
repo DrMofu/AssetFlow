@@ -2,6 +2,7 @@ import Link from "next/link";
 import {
   addDays,
   addMonths,
+  differenceInCalendarDays,
   endOfMonth,
   endOfWeek,
   format,
@@ -14,6 +15,8 @@ import {
 
 import { SensitiveValue } from "@/components/app-preferences";
 import { AssetCalendar } from "@/components/asset-calendar";
+import { AssetMilestones } from "@/components/asset-milestones";
+import type { AssetMilestoneItem } from "@/components/asset-milestones";
 import { AllocationPieChart, FxTrendLineChart } from "@/components/charts";
 import { MonthlyReturnsGrid } from "@/components/monthly-returns-grid";
 import { HistoryExplorer } from "@/components/history-explorer";
@@ -23,6 +26,7 @@ import {
   HISTORY_GROUP_OPTIONS,
   HISTORY_RANGE_PRESET_OPTIONS,
   ASSET_TYPE_LABELS,
+  ASSET_MILESTONE_DEFAULT_TARGETS,
 } from "@/lib/constants";
 import { getDashboardData, getHistoryData, getCalendarBreakdown } from "@/lib/portfolio";
 import { getRepository } from "@/lib/repository";
@@ -124,6 +128,93 @@ function PerformancePill({
   );
 }
 
+function SecurityMetric({
+  label,
+  value,
+  valueClassName = "",
+}: {
+  label: string;
+  value: string;
+  valueClassName?: string;
+}) {
+  return (
+    <div className="min-w-0 text-right">
+      <p className="af-text-muted whitespace-nowrap text-[11px] uppercase tracking-[0.06em]">{label}</p>
+      <SensitiveValue
+        value={value}
+        className={`mt-0.5 block break-words text-sm font-semibold leading-tight tabular-nums ${valueClassName}`}
+      />
+    </div>
+  );
+}
+
+function formatElapsedDays(days: number) {
+  if (days <= 0) {
+    return "0 天";
+  }
+  if (days < 365) {
+    return `${days} 天`;
+  }
+
+  const years = Math.floor(days / 365);
+  const remainingDays = days % 365;
+  if (remainingDays < 30) {
+    return `${years} 年`;
+  }
+
+  return `${years} 年 ${Math.floor(remainingDays / 30)} 个月`;
+}
+
+function resolveMilestoneTargets(
+  customTargets: Partial<Record<CurrencyCode, number[]>>,
+  currency: CurrencyCode,
+) {
+  const targets = customTargets[currency];
+  return targets?.length ? targets : ASSET_MILESTONE_DEFAULT_TARGETS[currency];
+}
+
+function buildAssetMilestones({
+  history,
+  targets,
+}: {
+  history: Array<{ date: string; total: number }>;
+  targets: number[];
+}): AssetMilestoneItem[] {
+  const sortedHistory = [...history]
+    .filter((row) => Number.isFinite(row.total))
+    .sort((left, right) => left.date.localeCompare(right.date));
+  const firstPoint = sortedHistory[0];
+  const latestPoint = sortedHistory.at(-1);
+  if (!firstPoint || !latestPoint) {
+    return [];
+  }
+
+  const firstUnreachedTarget = targets.find((target) => !sortedHistory.some((row) => row.total >= target));
+
+  return targets.map((target) => {
+    const reachedPoint = sortedHistory.find((row) => row.total >= target);
+    const progressPct = target <= 0 ? 0 : Math.min(100, Math.max(0, (latestPoint.total / target) * 100));
+
+    if (reachedPoint) {
+      return {
+        target,
+        reachedDate: reachedPoint.date,
+        elapsedLabel: formatElapsedDays(differenceInCalendarDays(new Date(reachedPoint.date), new Date(firstPoint.date))),
+        remaining: 0,
+        progressPct,
+        isNext: false,
+      };
+    }
+
+    return {
+      target,
+      remaining: Math.max(0, target - latestPoint.total),
+      progressPct,
+      isNext: target === firstUnreachedTarget,
+    };
+  });
+}
+
 export default async function DashboardPage({
   searchParams,
 }: {
@@ -164,7 +255,12 @@ export default async function DashboardPage({
     endDate: hasCustomHistoryRange ? historyEndDate : undefined,
     topAssetCount: safeHistoryGroup === "asset" ? historyTopAssetCount : undefined,
   });
-  const visibleTopSecurities = dashboard.topSecurities.filter((security) => Math.abs(security.convertedValue) >= 0.005);
+  const milestoneTargets = resolveMilestoneTargets(settings.assetMilestoneTargets, settings.displayCurrency);
+  const assetMilestones = buildAssetMilestones({
+    history: dashboard.trend,
+    targets: milestoneTargets,
+  });
+  const visibleTopSecurities = dashboard.topSecurities.filter((security) => Math.abs(security.quantity) >= 0.000001);
   const fxTrend = dashboard.latestFxRates
     .filter((row) => row.baseCurrency === "USD" && row.quoteCurrency === "CNY")
     .sort((left, right) => left.asOf.localeCompare(right.asOf))
@@ -370,7 +466,6 @@ export default async function DashboardPage({
             endDate={historyEndDate}
             topAssetCount={historyTopAssetCount}
             displayCurrency={settings.displayCurrency}
-            themePreference={settings.themePreference}
             data={historyData}
           />
         </div>
@@ -393,6 +488,12 @@ export default async function DashboardPage({
             cellMap={monthlyCellMap}
             breakdown={monthlyBreakdown}
             currency={dashboard.summary.baseCurrency}
+          />
+          <AssetMilestones
+            milestones={assetMilestones}
+            targets={milestoneTargets}
+            defaultTargets={ASSET_MILESTONE_DEFAULT_TARGETS[settings.displayCurrency]}
+            currency={settings.displayCurrency}
           />
         </div>
 
@@ -473,61 +574,46 @@ export default async function DashboardPage({
               </div>
             </div>
 
-            <div className="space-y-3">
-              {visibleTopSecurities.length ? (
-                visibleTopSecurities.map((security, index) => (
-                  <div key={security.id} className="af-card-soft rounded-[20px] px-4 py-4">
-                    <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
-                      <div className="flex min-w-0 shrink-0 items-center gap-3">
-                        <span className="af-button-primary flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-semibold">
-                          {index + 1}
-                        </span>
+            <div className="max-h-[28.25rem] overflow-y-auto overscroll-contain pr-1">
+              <div className="space-y-3 pb-1">
+                {visibleTopSecurities.length ? (
+                  visibleTopSecurities.map((security) => (
+                    <div key={security.id} className="af-card-soft min-h-[5rem] rounded-[20px] px-4 py-3.5">
+                      <div className="grid grid-cols-[minmax(5rem,1.3fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.25fr)_minmax(0,0.82fr)] items-center gap-2">
                         <div className="min-w-0">
-                          <p className="truncate text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+                          <p className="truncate text-base font-semibold" style={{ color: "var(--text-primary)" }}>
                             {security.symbol || security.name}
                           </p>
                           <p className="af-text-muted truncate text-xs">{security.name}</p>
                         </div>
-                      </div>
 
-                      <div className="flex flex-1 flex-wrap justify-end gap-x-5 gap-y-2">
-                        <div className="text-right">
-                          <p className="af-text-muted text-[10px] uppercase tracking-[0.16em]">持有股数</p>
-                          <SensitiveValue
-                            value={`${formatShareQuantity(security.quantity)} 股`}
-                            className="mt-0.5 block text-sm font-semibold"
-                          />
-                        </div>
-                        <div className="text-right">
-                          <p className="af-text-muted text-[10px] uppercase tracking-[0.16em]">平均股价</p>
-                          <SensitiveValue
-                            value={formatCurrency(security.averageCost, security.currency)}
-                            className="mt-0.5 block text-sm font-semibold"
-                          />
-                        </div>
-                        <div className="text-right">
-                          <p className="af-text-muted text-[10px] uppercase tracking-[0.16em]">当前价值</p>
-                          <SensitiveValue
-                            value={formatCurrency(security.convertedValue, dashboard.summary.baseCurrency)}
-                            className="mt-0.5 block text-sm font-semibold"
-                          />
-                        </div>
-                        <div className="text-right">
-                          <p className="af-text-muted text-[10px] uppercase tracking-[0.16em]">总回报率</p>
-                          <SensitiveValue
-                            value={formatPercent(security.profitLossPct)}
-                            className={`mt-0.5 block text-sm font-semibold ${security.profitLoss >= 0 ? "af-text-up" : "af-text-down"}`}
-                          />
-                        </div>
+                        <SecurityMetric label="持有股数" value={`${formatShareQuantity(security.quantity)} 股`} />
+                        <SecurityMetric
+                          label="持有成本"
+                          value={formatCurrency(security.averageCost, security.currency)}
+                        />
+                        <SecurityMetric
+                          label="当前价格"
+                          value={formatCurrency(security.unitPrice, security.currency)}
+                        />
+                        <SecurityMetric
+                          label="当前价值"
+                          value={formatCurrency(security.convertedValue, dashboard.summary.baseCurrency)}
+                        />
+                        <SecurityMetric
+                          label="总回报率"
+                          value={formatPercent(security.profitLossPct)}
+                          valueClassName={security.profitLoss >= 0 ? "af-text-up" : "af-text-down"}
+                        />
                       </div>
                     </div>
+                  ))
+                ) : (
+                  <div className="af-card-soft rounded-[20px] px-4 py-4">
+                    <p className="af-text-muted text-sm">当前没有持有中的股票或基金。</p>
                   </div>
-                ))
-              ) : (
-                <div className="af-card-soft rounded-[20px] px-4 py-4">
-                  <p className="af-text-muted text-sm">当前没有持有中的股票或基金。</p>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </div>
 

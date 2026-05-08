@@ -1048,6 +1048,7 @@ export async function getDashboardData(
   // Reuse already-computed assetSummaries instead of re-evaluating
   const topSecurities: DashboardSecurity[] = assetSummaries
     .filter((s) => s.type === "SECURITIES")
+    .filter((s) => Math.abs(s.quantity ?? 0) >= 0.000001)
     .map((s) => ({
       id: s.id,
       name: s.name,
@@ -1061,8 +1062,7 @@ export async function getDashboardData(
       profitLoss: s.profitLoss ?? 0,
       profitLossPct: s.profitLossPct ?? 0,
     }))
-    .sort((left, right) => right.convertedValue - left.convertedValue)
-    .slice(0, 5);
+    .sort((left, right) => right.convertedValue - left.convertedValue);
 
   return {
     summary: {
@@ -1298,7 +1298,12 @@ export async function getCalendarBreakdown(
     // When all values came from cache, derive symbol directly from the latest trade record
     if (capturedSymbol === undefined && asset.type === "SECURITIES") {
       capturedSymbol = sortRecordsAsc(records)
-        .filter((r) => r.recordType !== "VALUE_SNAPSHOT" && r.symbol)
+        .filter(
+          (
+            record,
+          ): record is Extract<AssetRecord, { recordType: "STOCK_TRADE" | "STOCK_SNAPSHOT" }> =>
+            record.recordType !== "VALUE_SNAPSHOT" && Boolean(record.symbol),
+        )
         .at(-1)?.symbol ?? null;
     }
 

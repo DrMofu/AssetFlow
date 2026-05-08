@@ -26,8 +26,9 @@ export const HISTORY_CHART_MODE_LABELS: Record<HistoryChartMode, string> = {
   stacked: "堆叠图",
   line: "折线图",
 };
-export const HISTORY_RANGE_PRESET_OPTIONS: HistoryRangePreset[] = ["1m", "3m", "ytd", "1y", "3y", "all"];
+export const HISTORY_RANGE_PRESET_OPTIONS: HistoryRangePreset[] = ["1w", "1m", "3m", "ytd", "1y", "3y", "all"];
 export const HISTORY_RANGE_PRESET_LABELS: Record<HistoryRangePreset, string> = {
+  "1w": "1W",
   "1m": "1M",
   "3m": "3M",
   ytd: "YTD",
@@ -46,3 +47,10 @@ export const CURRENCY_SYMBOLS: Record<CurrencyCode, string> = {
   USD: "$",
   CNY: "¥",
 };
+
+export const ASSET_MILESTONE_DEFAULT_TARGETS: Record<CurrencyCode, number[]> = {
+  USD: [10_000, 100_000, 200_000, 500_000, 1_000_000],
+  CNY: [10_000, 100_000, 200_000, 500_000, 1_000_000],
+};
+
+export const ASSET_MILESTONE_TARGET_LIMIT = 12;

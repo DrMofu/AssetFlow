@@ -410,6 +410,23 @@ function buildHistoryAxisMeta(data: Array<Record<string, string | number>>) {
   };
 }
 
+function buildEmphasizedValueDomain(values: number[]) {
+  const finiteValues = values.filter((value) => Number.isFinite(value));
+  if (finiteValues.length === 0) {
+    return undefined;
+  }
+
+  const min = Math.min(...finiteValues);
+  const max = Math.max(...finiteValues);
+  const spread = max - min;
+  const fallbackPadding = Math.max(Math.abs(max) * 0.02, 1);
+  const padding = spread > 0 ? spread * 0.12 : fallbackPadding;
+  const lower = Math.max(0, min - padding);
+  const upper = max + padding;
+
+  return [lower, upper] as [number, number];
+}
+
 function HistorySeriesTooltip({
   active,
   payload,
@@ -606,15 +623,21 @@ export function TrendAreaChart({
   data,
   currency = "USD",
   selection,
+  emphasizeVariation = false,
 }: {
   data: Array<{ date: string; total: number }>;
   currency?: "USD" | "CNY";
   selection?: HistoryRangeSelection;
+  emphasizeVariation?: boolean;
 }) {
   const { privacyMode, settings } = useAppPreferences();
   const axisMeta = useMemo(
     () => buildHistoryAxisMeta(data as Array<Record<string, string | number>>),
     [data],
+  );
+  const yAxisDomain = useMemo(
+    () => (emphasizeVariation ? buildEmphasizedValueDomain(data.map((point) => point.total)) : undefined),
+    [data, emphasizeVariation],
   );
   const trendColor = useMemo(
     () => resolveTrendColor(detectTrendDirection(data, (point) => point.total), settings.colorScheme),
@@ -654,6 +677,7 @@ export function TrendAreaChart({
             tickLine={false}
             axisLine={false}
             width={80}
+            domain={yAxisDomain}
             tick={{ fill: "var(--text-secondary)", fontSize: 12 }}
             tickFormatter={(value: number) => formatMaybeMasked(formatCompactCurrency(value, currency), privacyMode)}
           />

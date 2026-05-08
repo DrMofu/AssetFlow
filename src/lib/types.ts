@@ -2,7 +2,7 @@ export type CurrencyCode = "USD" | "CNY";
 export type AssetType = "CASH" | "SECURITIES" | "OTHER";
 export type HistoryGroupBy = "total" | "type" | "folder" | "asset";
 export type HistoryChartMode = "stacked" | "line";
-export type HistoryRangePreset = "1m" | "3m" | "ytd" | "1y" | "3y" | "all";
+export type HistoryRangePreset = "1w" | "1m" | "3m" | "ytd" | "1y" | "3y" | "all";
 export type PeriodOption = "1y" | "ytd" | "3y" | "all";
 export type ThemePreference = "light" | "dark";
 export type ColorScheme = "green-up" | "red-up";
@@ -19,6 +19,7 @@ export interface UserSettings {
   rootFolderSortOrder: number;
   timeZone: string;
   colorScheme: ColorScheme;
+  assetMilestoneTargets: Partial<Record<CurrencyCode, number[]>>;
 }
 
 export interface UserArchive {
@@ -312,6 +313,7 @@ export interface SettingsInput {
   historyTopAssetCount: number;
   timeZone: string;
   colorScheme: ColorScheme;
+  assetMilestoneTargets: Partial<Record<CurrencyCode, number[]>>;
 }
 
 export interface ArchiveOverview {

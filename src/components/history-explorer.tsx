@@ -23,7 +23,6 @@ import type {
   HistoryChartMode,
   HistoryGroupBy,
   HistoryRangePreset,
-  ThemePreference,
 } from "@/lib/types";
 import { formatCalendarDateLabel } from "@/lib/utils";
 
@@ -95,7 +94,6 @@ export function HistoryExplorer({
   endDate,
   topAssetCount,
   displayCurrency,
-  themePreference,
   data,
 }: {
   basePath: string;
@@ -106,7 +104,6 @@ export function HistoryExplorer({
   endDate: string;
   topAssetCount: number;
   displayCurrency: CurrencyCode;
-  themePreference: ThemePreference;
   data: Array<Record<string, string | number>>;
 }) {
   const router = useRouter();
@@ -255,8 +252,6 @@ export function HistoryExplorer({
                 rangePreset={rangePreset}
                 startDate={hasCustomRange ? startDate : undefined}
                 endDate={hasCustomRange ? endDate : undefined}
-                displayCurrency={displayCurrency}
-                themePreference={themePreference}
                 compact
               />
             ) : null}
@@ -348,6 +343,7 @@ export function HistoryExplorer({
           <TrendAreaChart
             data={data as Array<{ date: string; total: number }>}
             currency={displayCurrency}
+            emphasizeVariation={rangePreset !== "all"}
             selection={{
               ...selection,
               onDateClick: handleDateClick,

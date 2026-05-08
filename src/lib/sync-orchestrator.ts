@@ -1,7 +1,7 @@
 import { syncFxDailyHistory } from "@/lib/fx-rates";
 import { enqueueSyncTask } from "@/lib/sync-queue";
 import { syncSecurityPriceHistory } from "@/lib/security-prices";
-import { getLatestFxAvailableDayKey, getLatestUsMarketSessionDayKey, getLocalDayKey, toNewYorkDayKey } from "@/lib/utils";
+import { getLatestFxAvailableDayKey, getLatestUsMarketSessionDayKey } from "@/lib/utils";
 import type { Asset, AssetRecord, FxRateSnapshot, SecurityHoldingPeriod, SecurityPriceHistoryRow } from "@/lib/types";
 
 const SECURITY_QUANTITY_EPSILON = 0.0001;
@@ -61,10 +61,6 @@ function buildSecurityHoldingPeriods(records: AssetRecord[]) {
   }
 
   return periods;
-}
-
-function toDayKey(value: string) {
-  return toNewYorkDayKey(value);
 }
 
 function getCalendarDayDiff(fromDate: string, toDate: string) {

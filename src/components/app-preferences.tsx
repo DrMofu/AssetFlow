@@ -19,7 +19,7 @@ type AppPreferencesContextValue = {
   toggleDisplayCurrency: () => void;
   toggleThemePreference: () => void;
   updatePreferences: (
-    patch: Partial<Pick<UserSettings, "timeZone" | "colorScheme">>,
+    patch: Partial<Pick<UserSettings, "timeZone" | "colorScheme" | "assetMilestoneTargets">>,
   ) => Promise<void>;
 };
 
@@ -39,6 +39,7 @@ function postSettings(settings: UserSettings) {
       historyTopAssetCount: settings.historyTopAssetCount,
       timeZone: settings.timeZone,
       colorScheme: settings.colorScheme,
+      assetMilestoneTargets: settings.assetMilestoneTargets,
     }),
   });
 }
@@ -100,7 +101,12 @@ export function AppPreferencesProvider({
     patch: Partial<
       Pick<
         UserSettings,
-        "displayCurrency" | "themePreference" | "historyTopAssetCount" | "timeZone" | "colorScheme"
+        | "displayCurrency"
+        | "themePreference"
+        | "historyTopAssetCount"
+        | "timeZone"
+        | "colorScheme"
+        | "assetMilestoneTargets"
       >
     >,
   ) {
@@ -144,7 +150,9 @@ export function AppPreferencesProvider({
     void updateSettings({ themePreference: nextTheme });
   }
 
-  async function updatePreferences(patch: Partial<Pick<UserSettings, "timeZone" | "colorScheme">>) {
+  async function updatePreferences(
+    patch: Partial<Pick<UserSettings, "timeZone" | "colorScheme" | "assetMilestoneTargets">>,
+  ) {
     await updateSettings(patch);
   }
 

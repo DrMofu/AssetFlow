@@ -3,7 +3,8 @@
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
-import type { CurrencyCode, HistoryChartMode, HistoryGroupBy, HistoryRangePreset, ThemePreference } from "@/lib/types";
+import { useAppPreferences } from "@/components/app-preferences";
+import type { HistoryChartMode, HistoryGroupBy, HistoryRangePreset } from "@/lib/types";
 
 export function HistoryTopCountControl({
   initialValue,
@@ -12,8 +13,6 @@ export function HistoryTopCountControl({
   rangePreset,
   startDate,
   endDate,
-  displayCurrency,
-  themePreference,
   compact = false,
 }: {
   initialValue: number;
@@ -22,12 +21,11 @@ export function HistoryTopCountControl({
   rangePreset: HistoryRangePreset;
   startDate?: string;
   endDate?: string;
-  displayCurrency: CurrencyCode;
-  themePreference: ThemePreference;
   compact?: boolean;
 }) {
   const router = useRouter();
   const pathname = usePathname();
+  const { settings } = useAppPreferences();
   const [value, setValue] = useState(String(initialValue));
 
   useEffect(() => {
@@ -47,8 +45,7 @@ export function HistoryTopCountControl({
 
     const timeoutId = window.setTimeout(() => {
       void persistTopCountPreference({
-        displayCurrency,
-        themePreference,
+        settings,
         historyTopAssetCount: nextValue,
       });
       router.replace(
@@ -68,15 +65,14 @@ export function HistoryTopCountControl({
     return () => window.clearTimeout(timeoutId);
   }, [
     chartMode,
-    displayCurrency,
     endDate,
     groupBy,
     initialValue,
     pathname,
     rangePreset,
     router,
+    settings,
     startDate,
-    themePreference,
     value,
   ]);
 
@@ -96,12 +92,10 @@ export function HistoryTopCountControl({
 }
 
 function persistTopCountPreference({
-  displayCurrency,
-  themePreference,
+  settings,
   historyTopAssetCount,
 }: {
-  displayCurrency: CurrencyCode;
-  themePreference: ThemePreference;
+  settings: ReturnType<typeof useAppPreferences>["settings"];
   historyTopAssetCount: number;
 }) {
   return fetch("/api/settings", {
@@ -110,9 +104,12 @@ function persistTopCountPreference({
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      displayCurrency,
-      themePreference,
+      displayCurrency: settings.displayCurrency,
+      themePreference: settings.themePreference,
       historyTopAssetCount,
+      timeZone: settings.timeZone,
+      colorScheme: settings.colorScheme,
+      assetMilestoneTargets: settings.assetMilestoneTargets,
     }),
   }).catch(() => undefined);
 }

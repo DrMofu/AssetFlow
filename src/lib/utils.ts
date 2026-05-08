@@ -151,6 +151,7 @@ export function getPeriodStart(period: PeriodOption) {
 }
 
 export function getHistoryRangeStart(preset: HistoryRangePreset) {
+  if (preset === "1w") return startOfDay(subDays(new Date(), 6));
   if (preset === "1m") return startOfDay(subDays(new Date(), 29));
   if (preset === "3m") return startOfDay(subDays(new Date(), 89));
   if (preset === "ytd") return startOfYear(new Date());
@@ -248,12 +249,18 @@ export function getLatestUsMarketSessionDayKey(value: Date = new Date()) {
   return getPreviousBusinessDay(currentDayKey);
 }
 
-/**
- * Returns the most recent calendar day on which FX rates are published.
- * FX rates are only available on weekdays; on Saturday/Sunday this returns the preceding Friday.
- */
 export function getLatestFxAvailableDayKey(value: Date = new Date()) {
-  const dayKey = getLocalDayKey(value);
-  if (isBusinessDay(dayKey)) return dayKey;
-  return getPreviousBusinessDay(dayKey);
+  const parts = getTimeZoneParts(value, "America/New_York");
+  const currentDayKey = `${parts.year}-${parts.month}-${parts.day}`;
+
+  if (!isBusinessDay(currentDayKey)) {
+    return getPreviousBusinessDay(currentDayKey);
+  }
+
+  const minutesAfterMidnight = parts.hour * 60 + parts.minute;
+  if (minutesAfterMidnight >= 16 * 60) {
+    return currentDayKey;
+  }
+
+  return getPreviousBusinessDay(currentDayKey);
 }
