@@ -11,11 +11,34 @@ import { formatCalendarDateLabel, formatCompactCurrency, formatCurrency } from "
 export type AssetMilestoneItem = {
   target: number;
   reachedDate?: string;
-  elapsedLabel?: string;
+  elapsedDays?: number;
+  stageDays?: number;
   remaining: number;
   progressPct: number;
   isNext: boolean;
 };
+
+type DurationDisplayMode = "calendar" | "days";
+
+function formatElapsedDays(days: number, mode: DurationDisplayMode) {
+  if (mode === "days") {
+    return `${Math.max(0, days)} 天`;
+  }
+  if (days <= 0) {
+    return "0 天";
+  }
+  if (days < 365) {
+    return `${days} 天`;
+  }
+
+  const years = Math.floor(days / 365);
+  const remainingDays = days % 365;
+  if (remainingDays < 30) {
+    return `${years} 年`;
+  }
+
+  return `${years} 年 ${Math.floor(remainingDays / 30)} 个月`;
+}
 
 function normalizeTargets(targets: number[]) {
   return [...new Set(
@@ -44,6 +67,7 @@ export function AssetMilestones({
   const [draftAmount, setDraftAmount] = useState("");
   const [localTargets, setLocalTargets] = useState(targets);
   const [saving, setSaving] = useState(false);
+  const [durationDisplayMode, setDurationDisplayMode] = useState<DurationDisplayMode>("calendar");
 
   useEffect(() => {
     setLocalTargets(targets);
@@ -103,6 +127,7 @@ export function AssetMilestones({
   }
 
   const busy = saving || isUpdating;
+  const durationModeLabel = durationDisplayMode === "calendar" ? "按天数显示" : "按年月显示";
 
   return (
     <section className="af-card rounded-[34px] p-6">
@@ -113,13 +138,24 @@ export function AssetMilestones({
             首次达到目标
           </h3>
         </div>
-        <button
-          type="button"
-          onClick={() => setExpanded((current) => !current)}
-          className="af-button-secondary shrink-0 rounded-full px-4 py-2 text-sm font-semibold"
-        >
-          {expanded ? "收起" : "自定义"}
-        </button>
+        <div className="flex shrink-0 items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setDurationDisplayMode((current) => (current === "calendar" ? "days" : "calendar"))}
+            className="af-button-secondary inline-flex h-9 w-9 items-center justify-center rounded-full text-sm font-bold tabular-nums"
+            aria-label={durationModeLabel}
+            title={durationModeLabel}
+          >
+            {durationDisplayMode === "calendar" ? "天" : "年"}
+          </button>
+          <button
+            type="button"
+            onClick={() => setExpanded((current) => !current)}
+            className="af-button-secondary rounded-full px-4 py-2 text-sm font-semibold"
+          >
+            {expanded ? "收起" : "修改里程碑"}
+          </button>
+        </div>
       </header>
 
       {milestones.length ? (
@@ -148,9 +184,18 @@ export function AssetMilestones({
                 {milestone.reachedDate ? (
                   <>
                     <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
-                      {formatCalendarDateLabel(milestone.reachedDate)}
+                      {formatCalendarDateLabel(
+                        milestone.reachedDate,
+                        settings.timeZone,
+                        settings.dateFormatPreference,
+                      )}
                     </p>
-                    <p className="af-text-muted mt-0.5 text-xs">用时 {milestone.elapsedLabel}</p>
+                    <p className="af-text-muted mt-0.5 text-xs">
+                      总用时 {formatElapsedDays(milestone.elapsedDays ?? 0, durationDisplayMode)}
+                    </p>
+                    <p className="af-text-muted mt-0.5 text-xs">
+                      阶段 {formatElapsedDays(milestone.stageDays ?? 0, durationDisplayMode)}
+                    </p>
                   </>
                 ) : (
                   <>

@@ -6,6 +6,7 @@ export type HistoryRangePreset = "1w" | "1m" | "3m" | "ytd" | "1y" | "3y" | "all
 export type PeriodOption = "1y" | "ytd" | "3y" | "all";
 export type ThemePreference = "light" | "dark";
 export type ColorScheme = "green-up" | "red-up";
+export type DateFormatPreference = "en-month-day-year" | "zh-year-month-day" | "slash-year-month-day" | "dash-year-month-day";
 export type AssetRecordType = "VALUE_SNAPSHOT" | "STOCK_TRADE" | "STOCK_SNAPSHOT";
 export type StockTradeSide = "BUY" | "SELL";
 export type SecurityPriceSyncState = "manual" | "missing_api_key" | "not_synced" | "partial" | "synced";
@@ -19,6 +20,7 @@ export interface UserSettings {
   rootFolderSortOrder: number;
   timeZone: string;
   colorScheme: ColorScheme;
+  dateFormatPreference: DateFormatPreference;
   assetMilestoneTargets: Partial<Record<CurrencyCode, number[]>>;
 }
 
@@ -313,6 +315,7 @@ export interface SettingsInput {
   historyTopAssetCount: number;
   timeZone: string;
   colorScheme: ColorScheme;
+  dateFormatPreference: DateFormatPreference;
   assetMilestoneTargets: Partial<Record<CurrencyCode, number[]>>;
 }
 

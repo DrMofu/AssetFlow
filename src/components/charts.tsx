@@ -25,8 +25,8 @@ import {
 
 import { maskDisplayValue, useAppPreferences } from "@/components/app-preferences";
 import { HISTORY_RANGE_PRESET_LABELS, HISTORY_RANGE_PRESET_OPTIONS } from "@/lib/constants";
-import type { AssetDetailData, AssetTimelineEvent, AssetTimelineEventKind, ColorScheme, HistoryRangePreset } from "@/lib/types";
-import { formatCalendarDateLabel, formatCompactCurrency, formatCurrency } from "@/lib/utils";
+import type { AssetDetailData, AssetTimelineEvent, AssetTimelineEventKind, ColorScheme, DateFormatPreference, HistoryRangePreset } from "@/lib/types";
+import { formatCalendarDateLabel, formatCompactCurrency, formatCurrency, formatDateLabel } from "@/lib/utils";
 
 const TREND_UP_COLOR = "#00c805";
 const TREND_DOWN_COLOR = "#ef4444";
@@ -327,26 +327,34 @@ function HistoryRangeHighlight({
   );
 }
 
-function formatChartAxisLabel(value: string | number) {
+function formatChartAxisLabel(value: string | number, dateFormatPreference?: DateFormatPreference) {
   const parsed = parseIsoDate(value);
   if (!parsed) {
     return String(value);
+  }
+
+  if (dateFormatPreference && dateFormatPreference !== "en-month-day-year") {
+    return formatDateLabel(String(value), undefined, dateFormatPreference);
   }
 
   return format(parsed, "MMM d");
 }
 
-function formatChartTooltipLabel(value: string | number) {
+function formatChartTooltipLabel(value: string | number, dateFormatPreference?: DateFormatPreference) {
   const parsed = parseIsoDate(value);
   if (!parsed) {
     return String(value);
   }
 
+  if (dateFormatPreference) {
+    return formatCalendarDateLabel(String(value), undefined, dateFormatPreference);
+  }
+
   return format(parsed, "MMM d, yyyy");
 }
 
-function formatSelectionLabel(value: string) {
-  return formatCalendarDateLabel(value);
+function formatSelectionLabel(value: string, dateFormatPreference?: DateFormatPreference) {
+  return formatCalendarDateLabel(value, undefined, dateFormatPreference);
 }
 
 function getHistoryTickCount(length: number) {
@@ -434,6 +442,7 @@ function HistorySeriesTooltip({
   currency,
   seriesKeys,
   colorMode,
+  dateFormatPreference,
 }: {
   active?: boolean;
   payload?: ReadonlyArray<{ color?: string; payload?: Record<string, string | number | null> }>;
@@ -441,6 +450,7 @@ function HistorySeriesTooltip({
   currency: "USD" | "CNY";
   seriesKeys: string[];
   colorMode: HistorySeriesColorMode;
+  dateFormatPreference?: DateFormatPreference;
 }) {
   const { privacyMode } = useAppPreferences();
 
@@ -476,7 +486,7 @@ function HistorySeriesTooltip({
   return (
     <div style={tooltipStyle} className="min-w-[220px] p-4">
       <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
-        {formatMaybeMasked(formatChartTooltipLabel(label ?? ""), privacyMode)}
+        {formatMaybeMasked(formatChartTooltipLabel(label ?? "", dateFormatPreference), privacyMode)}
       </p>
       <p className="mt-1 text-base font-semibold" style={{ color: "var(--text-primary)" }}>
         总值 {formatMaybeMasked(formatCurrency(total, currency), privacyMode)}
@@ -518,9 +528,11 @@ function HistoryChartFrame({
 function HistoryXAxis({
   axisMeta,
   privacyMode,
+  dateFormatPreference,
 }: {
   axisMeta: ReturnType<typeof buildHistoryAxisMeta>;
   privacyMode: boolean;
+  dateFormatPreference?: DateFormatPreference;
 }) {
   return (
     <XAxis
@@ -530,7 +542,12 @@ function HistoryXAxis({
       axisLine={false}
       tick={{ fill: "var(--text-secondary)", fontSize: 12 }}
       tickFormatter={(value: string | number) =>
-        formatMaybeMasked(axisMeta.labelByDate.get(String(value)) ?? formatChartAxisLabel(value), privacyMode)
+        formatMaybeMasked(
+          dateFormatPreference && dateFormatPreference !== "en-month-day-year"
+            ? formatChartAxisLabel(value, dateFormatPreference)
+            : axisMeta.labelByDate.get(String(value)) ?? formatChartAxisLabel(value, dateFormatPreference),
+          privacyMode,
+        )
       }
     />
   );
@@ -560,10 +577,12 @@ function HistoryTooltip({
   currency,
   seriesKeys,
   colorMode,
+  dateFormatPreference,
 }: {
   currency: "USD" | "CNY";
   seriesKeys: string[];
   colorMode: HistorySeriesColorMode;
+  dateFormatPreference?: DateFormatPreference;
 }) {
   return (
     <Tooltip
@@ -579,6 +598,7 @@ function HistoryTooltip({
           currency={currency}
           seriesKeys={seriesKeys}
           colorMode={colorMode}
+          dateFormatPreference={dateFormatPreference}
         />
       )}
     />
@@ -670,7 +690,13 @@ export function TrendAreaChart({
             axisLine={false}
             tick={{ fill: "var(--text-secondary)", fontSize: 12 }}
             tickFormatter={(value: string | number) =>
-              formatMaybeMasked(axisMeta.labelByDate.get(String(value)) ?? formatChartAxisLabel(value), privacyMode)
+              formatMaybeMasked(
+                settings.dateFormatPreference !== "en-month-day-year"
+                  ? formatChartAxisLabel(value, settings.dateFormatPreference)
+                  : axisMeta.labelByDate.get(String(value)) ??
+                    formatChartAxisLabel(value, settings.dateFormatPreference),
+                privacyMode,
+              )
             }
           />
           <YAxis
@@ -684,7 +710,9 @@ export function TrendAreaChart({
           <Tooltip
             cursor={hoverCursor}
             contentStyle={tooltipStyle}
-            labelFormatter={(label) => formatMaybeMasked(formatChartTooltipLabel(label), privacyMode)}
+            labelFormatter={(label) =>
+              formatMaybeMasked(formatChartTooltipLabel(label, settings.dateFormatPreference), privacyMode)
+            }
             formatter={(value) => formatTooltipCurrency(value, currency, privacyMode)}
           />
           <Area
@@ -705,6 +733,7 @@ export function FxTrendLineChart({
 }: {
   data: Array<{ date: string; rate: number }>;
 }) {
+  const { settings } = useAppPreferences();
   const axisMeta = useMemo(
     () => buildHistoryAxisMeta(data as Array<Record<string, string | number>>),
     [data],
@@ -722,7 +751,12 @@ export function FxTrendLineChart({
             tickLine={false}
             axisLine={false}
             tick={{ fill: "var(--text-secondary)", fontSize: 12 }}
-            tickFormatter={(value: string | number) => axisMeta.labelByDate.get(String(value)) ?? formatChartAxisLabel(value)}
+            tickFormatter={(value: string | number) =>
+              settings.dateFormatPreference !== "en-month-day-year"
+                ? formatChartAxisLabel(value, settings.dateFormatPreference)
+                : axisMeta.labelByDate.get(String(value)) ??
+                  formatChartAxisLabel(value, settings.dateFormatPreference)
+            }
           />
           <YAxis
             tickLine={false}
@@ -735,7 +769,7 @@ export function FxTrendLineChart({
           <Tooltip
             cursor={hoverCursor}
             contentStyle={tooltipStyle}
-            labelFormatter={(label) => formatChartTooltipLabel(label)}
+            labelFormatter={(label) => formatChartTooltipLabel(label, settings.dateFormatPreference)}
             formatter={(value) => [`${Number(value).toFixed(4)}`, "USD/CNY"]}
           />
           <Line
@@ -929,7 +963,7 @@ function AssetTimelineTooltipCard({
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
-            {formatMaybeMasked(formatChartTooltipLabel(rowDate), privacyMode)}
+            {formatMaybeMasked(formatChartTooltipLabel(rowDate, settings.dateFormatPreference), privacyMode)}
           </p>
           <p className="mt-1 text-base font-semibold" style={{ color: "var(--text-primary)" }}>
             总价值 {formatMaybeMasked(formatCurrency(totalValue, detail.baseCurrency), privacyMode)}
@@ -1158,7 +1192,10 @@ export function AssetTimelineChart({
     detail.asset.type === "SECURITIES" && detail.timeline.hasSecurityPriceSeries;
   const rangeLabel =
     detail.timeline.rangeStart && detail.timeline.rangeEnd
-      ? `${formatSelectionLabel(detail.timeline.rangeStart)} - ${formatSelectionLabel(detail.timeline.rangeEnd)}`
+      ? `${formatSelectionLabel(detail.timeline.rangeStart, settings.dateFormatPreference)} - ${formatSelectionLabel(
+          detail.timeline.rangeEnd,
+          settings.dateFormatPreference,
+        )}`
       : null;
   const showCurrentSecurityPrice =
     detail.asset.type === "SECURITIES" &&
@@ -1302,7 +1339,8 @@ export function AssetTimelineChart({
               {hasCustomRange && startDate && endDate ? (
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="af-text-muted text-sm font-medium">
-                    {formatSelectionLabel(startDate)} - {formatSelectionLabel(endDate)}
+                    {formatSelectionLabel(startDate, settings.dateFormatPreference)} -{" "}
+                    {formatSelectionLabel(endDate, settings.dateFormatPreference)}
                   </span>
                   <Link
                     href={buildAssetRangeHref(selectedAssetId, rangePreset)}
@@ -1366,7 +1404,10 @@ export function AssetTimelineChart({
                 tick={{ fill: "var(--text-secondary)", fontSize: 12 }}
                 tickFormatter={(value: string | number) =>
                   formatMaybeMasked(
-                    axisMeta.labelByDate.get(String(value)) ?? formatChartAxisLabel(value),
+                    settings.dateFormatPreference !== "en-month-day-year"
+                      ? formatChartAxisLabel(value, settings.dateFormatPreference)
+                      : axisMeta.labelByDate.get(String(value)) ??
+                        formatChartAxisLabel(value, settings.dateFormatPreference),
                     privacyMode,
                   )
                 }
@@ -1463,7 +1504,7 @@ export function StackedBoundaryHistoryChart({
   selection?: HistoryRangeSelection;
   colorMode?: HistorySeriesColorMode;
 }) {
-  const { privacyMode } = useAppPreferences();
+  const { privacyMode, settings } = useAppPreferences();
   const keys = useMemo(() => getVisibleSeriesKeys(data), [data]);
   const axisMeta = useMemo(() => buildHistoryAxisMeta(data), [data]);
   const chartData = useMemo(
@@ -1507,9 +1548,18 @@ export function StackedBoundaryHistoryChart({
           >
             <CartesianGrid stroke="var(--chart-grid)" vertical={false} />
             <HistoryRangeHighlight selection={selection} />
-            <HistoryXAxis axisMeta={axisMeta} privacyMode={privacyMode} />
+            <HistoryXAxis
+              axisMeta={axisMeta}
+              privacyMode={privacyMode}
+              dateFormatPreference={settings.dateFormatPreference}
+            />
             <HistoryYAxis currency={currency} privacyMode={privacyMode} />
-            <HistoryTooltip currency={currency} seriesKeys={keys} colorMode={colorMode} />
+            <HistoryTooltip
+              currency={currency}
+              seriesKeys={keys}
+              colorMode={colorMode}
+              dateFormatPreference={settings.dateFormatPreference}
+            />
             {keys.map((key, index) => (
               <Area
                 key={key}
@@ -1543,7 +1593,7 @@ export function PlainHistoryLineChart({
   selection?: HistoryRangeSelection;
   colorMode?: HistorySeriesColorMode;
 }) {
-  const { privacyMode } = useAppPreferences();
+  const { privacyMode, settings } = useAppPreferences();
   const keys = useMemo(() => getVisibleSeriesKeys(data), [data]);
   const axisMeta = useMemo(() => buildHistoryAxisMeta(data), [data]);
 
@@ -1560,9 +1610,18 @@ export function PlainHistoryLineChart({
           >
             <CartesianGrid stroke="var(--chart-grid)" vertical={false} />
             <HistoryRangeHighlight selection={selection} />
-            <HistoryXAxis axisMeta={axisMeta} privacyMode={privacyMode} />
+            <HistoryXAxis
+              axisMeta={axisMeta}
+              privacyMode={privacyMode}
+              dateFormatPreference={settings.dateFormatPreference}
+            />
             <HistoryYAxis currency={currency} privacyMode={privacyMode} />
-            <HistoryTooltip currency={currency} seriesKeys={keys} colorMode={colorMode} />
+            <HistoryTooltip
+              currency={currency}
+              seriesKeys={keys}
+              colorMode={colorMode}
+              dateFormatPreference={settings.dateFormatPreference}
+            />
             {keys.map((key, index) => (
               <Line
                 key={key}

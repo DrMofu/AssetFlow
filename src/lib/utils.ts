@@ -1,7 +1,7 @@
 import { endOfDay, format, parseISO, startOfDay, startOfYear, subDays } from "date-fns";
 
 import { CURRENCY_SYMBOLS } from "@/lib/constants";
-import type { CurrencyCode, HistoryRangePreset, PeriodOption } from "@/lib/types";
+import type { CurrencyCode, DateFormatPreference, HistoryRangePreset, PeriodOption } from "@/lib/types";
 
 function normalizeCurrencyDisplay(value: string, currency: CurrencyCode) {
   if (currency !== "CNY") {
@@ -100,28 +100,74 @@ function partsForDisplay(value: string, timeZone?: string) {
   return getDateParts(parseISO(value), timeZone);
 }
 
-export function formatDateLabel(value: string, timeZone?: string) {
-  const parts = partsForDisplay(value, timeZone);
-  const monthIndex = Math.max(0, Math.min(11, Number(parts.month) - 1));
-  return `${MONTH_SHORT_NAMES[monthIndex]} ${Number(parts.day)}`;
+function resolveDateFormatPreference(dateFormatPreference?: DateFormatPreference) {
+  return dateFormatPreference ?? "en-month-day-year";
 }
 
-export function formatCalendarDateLabel(value: string, timeZone?: string) {
-  const parts = partsForDisplay(value, timeZone);
-  const monthIndex = Math.max(0, Math.min(11, Number(parts.month) - 1));
-  return `${MONTH_SHORT_NAMES[monthIndex]} ${Number(parts.day)}, ${parts.year}`;
+function formatFullDateParts(
+  parts: { year: string; month: string; day: string },
+  dateFormatPreference?: DateFormatPreference,
+) {
+  const year = Number(parts.year);
+  const month = Number(parts.month);
+  const day = Number(parts.day);
+
+  switch (resolveDateFormatPreference(dateFormatPreference)) {
+    case "zh-year-month-day":
+      return `${year}年${month}月${day}日`;
+    case "slash-year-month-day":
+      return `${parts.year}/${parts.month}/${parts.day}`;
+    case "dash-year-month-day":
+      return `${parts.year}-${parts.month}-${parts.day}`;
+    case "en-month-day-year":
+    default: {
+      const monthIndex = Math.max(0, Math.min(11, month - 1));
+      return `${MONTH_SHORT_NAMES[monthIndex]} ${day}, ${year}`;
+    }
+  }
 }
 
-export function formatStoredCalendarDateLabel(value: string, timeZone?: string) {
+function formatShortDateParts(
+  parts: { year: string; month: string; day: string },
+  dateFormatPreference?: DateFormatPreference,
+) {
+  const month = Number(parts.month);
+  const day = Number(parts.day);
+
+  switch (resolveDateFormatPreference(dateFormatPreference)) {
+    case "zh-year-month-day":
+      return `${month}月${day}日`;
+    case "slash-year-month-day":
+    case "dash-year-month-day":
+      return `${parts.month}/${parts.day}`;
+    case "en-month-day-year":
+    default: {
+      const monthIndex = Math.max(0, Math.min(11, month - 1));
+      return `${MONTH_SHORT_NAMES[monthIndex]} ${day}`;
+    }
+  }
+}
+
+export function formatDateLabel(value: string, timeZone?: string, dateFormatPreference?: DateFormatPreference) {
+  const parts = partsForDisplay(value, timeZone);
+  return formatShortDateParts(parts, dateFormatPreference);
+}
+
+export function formatCalendarDateLabel(value: string, timeZone?: string, dateFormatPreference?: DateFormatPreference) {
+  const parts = partsForDisplay(value, timeZone);
+  return formatFullDateParts(parts, dateFormatPreference);
+}
+
+export function formatStoredCalendarDateLabel(value: string, timeZone?: string, dateFormatPreference?: DateFormatPreference) {
   // 资产记录的 recordDate 多以 yyyy-mm-dd 起头；切片后字面拆，避免时区漂移
   if (looksLikeDayKey(value.slice(0, 10))) {
-    return formatCalendarDateLabel(value.slice(0, 10), timeZone);
+    return formatCalendarDateLabel(value.slice(0, 10), timeZone, dateFormatPreference);
   }
-  return formatCalendarDateLabel(value, timeZone);
+  return formatCalendarDateLabel(value, timeZone, dateFormatPreference);
 }
 
-export function formatDateTimeLabel(value: string, timeZone?: string) {
-  return formatCalendarDateLabel(value, timeZone);
+export function formatDateTimeLabel(value: string, timeZone?: string, dateFormatPreference?: DateFormatPreference) {
+  return formatCalendarDateLabel(value, timeZone, dateFormatPreference);
 }
 
 export function getLocalDayKey(value: Date = new Date(), timeZone?: string) {

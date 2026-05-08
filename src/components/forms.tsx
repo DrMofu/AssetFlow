@@ -5,7 +5,8 @@ import { useEffect, useMemo, useState } from "react";
 
 import { useAppPreferences } from "@/components/app-preferences";
 import { useToast } from "@/components/toast";
-import type { ArchiveOverview, ColorScheme, DataSyncOverview, SyncStatusSnapshot } from "@/lib/types";
+import { DATE_FORMAT_LABELS, DATE_FORMAT_OPTIONS } from "@/lib/constants";
+import type { ArchiveOverview, ColorScheme, DataSyncOverview, DateFormatPreference, SyncStatusSnapshot } from "@/lib/types";
 import { formatCalendarDateLabel, formatDateTimeLabel } from "@/lib/utils";
 
 async function postJson(url: string, payload: unknown) {
@@ -87,9 +88,9 @@ export function MarketDataKeyForm({ initialApiKey }: { initialApiKey: string }) 
   );
 }
 
-function formatCoverageDate(value: string | undefined, timeZone: string) {
+function formatCoverageDate(value: string | undefined, timeZone: string, dateFormatPreference: DateFormatPreference) {
   if (!value) return "暂无";
-  return formatCalendarDateLabel(value, timeZone);
+  return formatCalendarDateLabel(value, timeZone, dateFormatPreference);
 }
 
 function taskStateLabel(state: SyncStatusSnapshot["tasks"][number]["state"]) {
@@ -103,9 +104,11 @@ function taskStateLabel(state: SyncStatusSnapshot["tasks"][number]["state"]) {
 function DataSyncOverviewCards({
   overview,
   timeZone,
+  dateFormatPreference,
 }: {
   overview: DataSyncOverview;
   timeZone: string;
+  dateFormatPreference: DateFormatPreference;
 }) {
   return (
     <div className="grid gap-4">
@@ -127,7 +130,7 @@ function DataSyncOverviewCards({
           <div>
             <p className="af-text-muted text-xs">最新覆盖日期</p>
             <p className="mt-1 text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
-              {formatCoverageDate(overview.securities.latestCoverageEnd, timeZone)}
+              {formatCoverageDate(overview.securities.latestCoverageEnd, timeZone, dateFormatPreference)}
             </p>
           </div>
           <div>
@@ -157,13 +160,13 @@ function DataSyncOverviewCards({
           <div>
             <p className="af-text-muted text-xs">覆盖区间起点</p>
             <p className="mt-1 text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
-              {formatCoverageDate(overview.fx.coverageStart, timeZone)}
+              {formatCoverageDate(overview.fx.coverageStart, timeZone, dateFormatPreference)}
             </p>
           </div>
           <div>
             <p className="af-text-muted text-xs">已同步到</p>
             <p className="mt-1 text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
-              {formatCoverageDate(overview.fx.syncedThrough, timeZone)}
+              {formatCoverageDate(overview.fx.syncedThrough, timeZone, dateFormatPreference)}
             </p>
           </div>
         </div>
@@ -181,6 +184,7 @@ export function DataSyncStatusForm({
 }) {
   const { settings } = useAppPreferences();
   const timeZone = settings.timeZone;
+  const dateFormatPreference = settings.dateFormatPreference;
   const [overview, setOverview] = useState(initialOverview);
   const [queue, setQueue] = useState(initialQueue);
   const [pollError, setPollError] = useState<string | null>(null);
@@ -242,7 +246,11 @@ export function DataSyncStatusForm({
         </span>
       </div>
 
-      <DataSyncOverviewCards overview={overview} timeZone={timeZone} />
+      <DataSyncOverviewCards
+        overview={overview}
+        timeZone={timeZone}
+        dateFormatPreference={dateFormatPreference}
+      />
 
       <div className="af-card-soft rounded-[24px] p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -250,7 +258,7 @@ export function DataSyncStatusForm({
             队列任务
           </p>
           <span className="af-button-secondary rounded-full px-3 py-1 text-xs font-medium">
-            {queue.updatedAt ? `更新于 ${formatDateTimeLabel(queue.updatedAt, timeZone)}` : "等待中"}
+            {queue.updatedAt ? `更新于 ${formatDateTimeLabel(queue.updatedAt, timeZone, dateFormatPreference)}` : "等待中"}
           </span>
         </div>
 
@@ -271,7 +279,9 @@ export function DataSyncStatusForm({
                     </p>
                   </div>
                   {task.nextRetryAt ? (
-                    <span className="af-text-muted text-xs">重试时间 {formatDateTimeLabel(task.nextRetryAt, timeZone)}</span>
+                    <span className="af-text-muted text-xs">
+                      重试时间 {formatDateTimeLabel(task.nextRetryAt, timeZone, dateFormatPreference)}
+                    </span>
                   ) : null}
                 </div>
                 {task.errorMessage ? (
@@ -293,6 +303,7 @@ export function StorageActionsForm() {
   const { settings } = useAppPreferences();
   const { showToast } = useToast();
   const timeZone = settings.timeZone;
+  const dateFormatPreference = settings.dateFormatPreference;
   const [submitting, setSubmitting] = useState<"create-empty" | "create-duplicate" | string | null>(null);
   const [archiveName, setArchiveName] = useState("");
   const [archives, setArchives] = useState<ArchiveOverview["archives"]>([]);
@@ -436,7 +447,7 @@ export function StorageActionsForm() {
                       {archive.name}
                     </p>
                     <p className="af-text-muted mt-1 text-xs">
-                      创建于 {formatDateTimeLabel(archive.createdAt, timeZone)}
+                      创建于 {formatDateTimeLabel(archive.createdAt, timeZone, dateFormatPreference)}
                     </p>
                   </div>
                   {isActive ? (
@@ -579,12 +590,14 @@ export function PreferencesForm() {
   const { showToast } = useToast();
   const [timeZone, setTimeZone] = useState(settings.timeZone);
   const [colorScheme, setColorScheme] = useState<ColorScheme>(settings.colorScheme);
+  const [dateFormatPreference, setDateFormatPreference] = useState<DateFormatPreference>(settings.dateFormatPreference);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     setTimeZone(settings.timeZone);
     setColorScheme(settings.colorScheme);
-  }, [settings.timeZone, settings.colorScheme]);
+    setDateFormatPreference(settings.dateFormatPreference);
+  }, [settings.timeZone, settings.colorScheme, settings.dateFormatPreference]);
 
   const systemTimeZone = useMemo(() => describeSystemTimeZone(), []);
   const availableTimeZones = useMemo(() => getCompactTimeZoneOptions(), []);
@@ -600,7 +613,7 @@ export function PreferencesForm() {
     setSubmitting(true);
 
     try {
-      await updatePreferences({ timeZone, colorScheme });
+      await updatePreferences({ timeZone, colorScheme, dateFormatPreference });
       showToast("自定义设置已保存", { tone: "success" });
     } catch (submitError) {
       showToast(submitError instanceof Error ? submitError.message : "保存失败", { tone: "error" });
@@ -609,7 +622,10 @@ export function PreferencesForm() {
     }
   }
 
-  const isDirty = timeZone !== settings.timeZone || colorScheme !== settings.colorScheme;
+  const isDirty =
+    timeZone !== settings.timeZone ||
+    colorScheme !== settings.colorScheme ||
+    dateFormatPreference !== settings.dateFormatPreference;
 
   return (
     <form
@@ -644,6 +660,35 @@ export function PreferencesForm() {
           影响日期与时间的显示格式。留“跟随系统”会按当前设备的时区显示。
         </span>
       </label>
+
+      <fieldset className="grid gap-2 text-sm af-text-muted">
+        <legend className="mb-1">日期显示</legend>
+        <div className="grid gap-2 sm:grid-cols-2">
+          {DATE_FORMAT_OPTIONS.map((option) => (
+            <label
+              key={option}
+              className="af-card-soft flex cursor-pointer items-center gap-3 rounded-[20px] px-4 py-3"
+              style={{
+                boxShadow:
+                  dateFormatPreference === option
+                    ? "0 0 0 2px color-mix(in srgb, var(--text-primary) 30%, transparent)"
+                    : undefined,
+              }}
+            >
+              <input
+                type="radio"
+                name="dateFormatPreference"
+                value={option}
+                checked={dateFormatPreference === option}
+                onChange={() => setDateFormatPreference(option)}
+              />
+              <span className="font-semibold tabular-nums" style={{ color: "var(--text-primary)" }}>
+                {DATE_FORMAT_LABELS[option]}
+              </span>
+            </label>
+          ))}
+        </div>
+      </fieldset>
 
       <fieldset className="grid gap-2 text-sm af-text-muted">
         <legend className="mb-1">涨跌颜色</legend>

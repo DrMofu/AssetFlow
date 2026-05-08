@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { SensitiveValue } from "@/components/app-preferences";
+import { SensitiveValue, useAppPreferences } from "@/components/app-preferences";
 import { AssetTimelineChart } from "@/components/charts";
 import type {
   AssetFolder,
@@ -15,6 +15,7 @@ import type {
   CreateAssetRecordInput,
   CurrencyCode,
   HistoryRangePreset,
+  UserSettings,
   StockTradeSide,
 } from "@/lib/types";
 import { formatCurrency, formatPercent, formatStoredCalendarDateLabel } from "@/lib/utils";
@@ -236,7 +237,7 @@ function formatShareQuantity(value?: number | null) {
   }).format(value);
 }
 
-function securitySyncStatusLabel(detail: AssetDetailData) {
+function securitySyncStatusLabel(detail: AssetDetailData, settings: UserSettings) {
   const asset = detail.asset;
   if (asset.type !== "SECURITIES") {
     return null;
@@ -248,7 +249,11 @@ function securitySyncStatusLabel(detail: AssetDetailData) {
 
   if (asset.priceSyncState === "synced") {
     return asset.priceCoverageEnd
-      ? `股价同步至 ${formatStoredCalendarDateLabel(asset.priceCoverageEnd)}`
+      ? `股价同步至 ${formatStoredCalendarDateLabel(
+          asset.priceCoverageEnd,
+          settings.timeZone,
+          settings.dateFormatPreference,
+        )}`
       : "已完成";
   }
 
@@ -1048,6 +1053,7 @@ export function AssetsDatabase({
 }) {
   const ROOT_SECTION_ID = "__root__";
   const router = useRouter();
+  const { settings } = useAppPreferences();
   const [assetModalState, setAssetModalState] = useState<AssetModalState>(null);
   const [folderModalState, setFolderModalState] = useState<FolderModalState>(null);
   const [recordModalState, setRecordModalState] = useState<RecordModalState>(null);
@@ -1554,7 +1560,11 @@ export function AssetsDatabase({
                                 <td className="py-4 pr-4">
                                   {asset.latestRecordDate ? (
                                     <SensitiveValue
-                                      value={formatStoredCalendarDateLabel(asset.latestRecordDate)}
+                                      value={formatStoredCalendarDateLabel(
+                                        asset.latestRecordDate,
+                                        settings.timeZone,
+                                        settings.dateFormatPreference,
+                                      )}
                                       className="af-text-muted"
                                     />
                                   ) : (
@@ -1655,12 +1665,12 @@ export function AssetsDatabase({
                           <p className="af-text-muted mt-2 text-sm">
                             {folderLabel(detail.asset.folderId, folders)} ·{" "}
                             {detail.asset.notes || "无备注"}
-                            {detail.asset.type === "SECURITIES" && securitySyncStatusLabel(detail) ? (
+                            {detail.asset.type === "SECURITIES" && securitySyncStatusLabel(detail, settings) ? (
                               <>
                                 {" "}
                                 ·{" "}
                                 <SensitiveValue
-                                  value={securitySyncStatusLabel(detail) ?? "暂无历史价格"}
+                                  value={securitySyncStatusLabel(detail, settings) ?? "暂无历史价格"}
                                   className="font-medium"
                                 />
                               </>
@@ -1754,7 +1764,11 @@ export function AssetsDatabase({
                           </td>
                           <td className="py-4 pr-4 align-middle">
                             <SensitiveValue
-                              value={formatStoredCalendarDateLabel(record.recordDate)}
+                              value={formatStoredCalendarDateLabel(
+                                record.recordDate,
+                                settings.timeZone,
+                                settings.dateFormatPreference,
+                              )}
                               className="af-text-muted whitespace-nowrap"
                             />
                           </td>

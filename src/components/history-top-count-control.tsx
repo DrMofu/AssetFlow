@@ -109,6 +109,7 @@ function persistTopCountPreference({
       historyTopAssetCount,
       timeZone: settings.timeZone,
       colorScheme: settings.colorScheme,
+      dateFormatPreference: settings.dateFormatPreference,
       assetMilestoneTargets: settings.assetMilestoneTargets,
     }),
   }).catch(() => undefined);

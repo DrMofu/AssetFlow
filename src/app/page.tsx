@@ -148,23 +148,6 @@ function SecurityMetric({
   );
 }
 
-function formatElapsedDays(days: number) {
-  if (days <= 0) {
-    return "0 天";
-  }
-  if (days < 365) {
-    return `${days} 天`;
-  }
-
-  const years = Math.floor(days / 365);
-  const remainingDays = days % 365;
-  if (remainingDays < 30) {
-    return `${years} 年`;
-  }
-
-  return `${years} 年 ${Math.floor(remainingDays / 30)} 个月`;
-}
-
 function resolveMilestoneTargets(
   customTargets: Partial<Record<CurrencyCode, number[]>>,
   currency: CurrencyCode,
@@ -191,15 +174,22 @@ function buildAssetMilestones({
 
   const firstUnreachedTarget = targets.find((target) => !sortedHistory.some((row) => row.total >= target));
 
+  let previousReachedDate = firstPoint.date;
+
   return targets.map((target) => {
     const reachedPoint = sortedHistory.find((row) => row.total >= target);
     const progressPct = target <= 0 ? 0 : Math.min(100, Math.max(0, (latestPoint.total / target) * 100));
 
     if (reachedPoint) {
+      const elapsedDays = differenceInCalendarDays(new Date(reachedPoint.date), new Date(firstPoint.date));
+      const stageDays = differenceInCalendarDays(new Date(reachedPoint.date), new Date(previousReachedDate));
+      previousReachedDate = reachedPoint.date;
+
       return {
         target,
         reachedDate: reachedPoint.date,
-        elapsedLabel: formatElapsedDays(differenceInCalendarDays(new Date(reachedPoint.date), new Date(firstPoint.date))),
+        elapsedDays,
+        stageDays,
         remaining: 0,
         progressPct,
         isNext: false,
@@ -630,7 +620,9 @@ export default async function DashboardPage({
                   {latestFxPoint ? `¥${latestFxPoint.rate.toFixed(4)} / $1` : "暂无汇率"}
                 </p>
                 <p className="af-text-muted mt-1 text-xs">
-                  {latestFxPoint ? formatCalendarDateLabel(latestFxPoint.date) : "等待同步"}
+                  {latestFxPoint
+                    ? formatCalendarDateLabel(latestFxPoint.date, settings.timeZone, settings.dateFormatPreference)
+                    : "等待同步"}
                 </p>
               </div>
             </div>

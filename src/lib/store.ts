@@ -15,6 +15,7 @@ import type {
   SecurityPriceHistoryRow,
   SyncStatusSnapshot,
   StockTradeSide,
+  DateFormatPreference,
   ThemePreference,
   UserArchive,
   UserSettings,
@@ -217,6 +218,12 @@ async function writeSecurityPriceHistoryFiles(rows: SecurityPriceHistoryRow[]) {
 
 function normalizeSettings(raw: Partial<UserSettings>) {
   const colorScheme = raw.colorScheme === "red-up" ? "red-up" : "green-up";
+  const dateFormatPreference: DateFormatPreference =
+    raw.dateFormatPreference === "zh-year-month-day" ||
+    raw.dateFormatPreference === "slash-year-month-day" ||
+    raw.dateFormatPreference === "dash-year-month-day"
+      ? raw.dateFormatPreference
+      : "en-month-day-year";
   return {
     displayCurrency: (raw.displayCurrency ?? "USD") as CurrencyCode,
     themePreference: (raw.themePreference ?? "light") as ThemePreference,
@@ -224,6 +231,7 @@ function normalizeSettings(raw: Partial<UserSettings>) {
     rootFolderSortOrder: Math.max(0, Number(raw.rootFolderSortOrder ?? 0)),
     timeZone: typeof raw.timeZone === "string" ? raw.timeZone : "",
     colorScheme,
+    dateFormatPreference,
     assetMilestoneTargets: normalizeAssetMilestoneTargets(raw.assetMilestoneTargets),
   } satisfies UserSettings;
 }

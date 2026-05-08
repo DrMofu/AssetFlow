@@ -1,6 +1,7 @@
 import type {
   AssetType,
   CurrencyCode,
+  DateFormatPreference,
   HistoryChartMode,
   HistoryGroupBy,
   HistoryRangePreset,
@@ -54,3 +55,12 @@ export const ASSET_MILESTONE_DEFAULT_TARGETS: Record<CurrencyCode, number[]> = {
 };
 
 export const ASSET_MILESTONE_TARGET_LIMIT = 12;
+
+export const DATE_FORMAT_LABELS: Record<DateFormatPreference, string> = {
+  "en-month-day-year": "May 8, 2026",
+  "zh-year-month-day": "2026年5月8日",
+  "slash-year-month-day": "2026/05/08",
+  "dash-year-month-day": "2026-05-08",
+};
+
+export const DATE_FORMAT_OPTIONS = Object.keys(DATE_FORMAT_LABELS) as DateFormatPreference[];

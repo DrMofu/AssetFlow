@@ -27,6 +27,12 @@ const schema = z.object({
   historyTopAssetCount: z.coerce.number().int().min(1).max(50),
   timeZone: z.string().max(80),
   colorScheme: z.enum(["green-up", "red-up"]),
+  dateFormatPreference: z.enum([
+    "en-month-day-year",
+    "zh-year-month-day",
+    "slash-year-month-day",
+    "dash-year-month-day",
+  ]),
   assetMilestoneTargets: z.object({
     USD: targetListSchema.optional(),
     CNY: targetListSchema.optional(),

@@ -19,7 +19,7 @@ type AppPreferencesContextValue = {
   toggleDisplayCurrency: () => void;
   toggleThemePreference: () => void;
   updatePreferences: (
-    patch: Partial<Pick<UserSettings, "timeZone" | "colorScheme" | "assetMilestoneTargets">>,
+    patch: Partial<Pick<UserSettings, "timeZone" | "colorScheme" | "dateFormatPreference" | "assetMilestoneTargets">>,
   ) => Promise<void>;
 };
 
@@ -39,6 +39,7 @@ function postSettings(settings: UserSettings) {
       historyTopAssetCount: settings.historyTopAssetCount,
       timeZone: settings.timeZone,
       colorScheme: settings.colorScheme,
+      dateFormatPreference: settings.dateFormatPreference,
       assetMilestoneTargets: settings.assetMilestoneTargets,
     }),
   });
@@ -106,6 +107,7 @@ export function AppPreferencesProvider({
         | "historyTopAssetCount"
         | "timeZone"
         | "colorScheme"
+        | "dateFormatPreference"
         | "assetMilestoneTargets"
       >
     >,
@@ -151,7 +153,7 @@ export function AppPreferencesProvider({
   }
 
   async function updatePreferences(
-    patch: Partial<Pick<UserSettings, "timeZone" | "colorScheme" | "assetMilestoneTargets">>,
+    patch: Partial<Pick<UserSettings, "timeZone" | "colorScheme" | "dateFormatPreference" | "assetMilestoneTargets">>,
   ) {
     await updateSettings(patch);
   }

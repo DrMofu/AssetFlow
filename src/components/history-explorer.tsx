@@ -9,6 +9,7 @@ import {
   StackedBoundaryHistoryChart,
   TrendAreaChart,
 } from "@/components/charts";
+import { useAppPreferences } from "@/components/app-preferences";
 import { HistoryTopCountControl } from "@/components/history-top-count-control";
 import {
   HISTORY_CHART_MODE_LABELS,
@@ -81,10 +82,6 @@ function normalizeSelectionRange(startDate: string, endDate: string) {
     : { startDate: endDate, endDate: startDate };
 }
 
-function formatSelectionLabel(value: string) {
-  return formatCalendarDateLabel(value);
-}
-
 export function HistoryExplorer({
   basePath,
   groupBy,
@@ -107,6 +104,7 @@ export function HistoryExplorer({
   data: Array<Record<string, string | number>>;
 }) {
   const router = useRouter();
+  const { settings } = useAppPreferences();
   const chartAreaRef = useRef<HTMLDivElement | null>(null);
   const selectionVersion = `${groupBy}|${chartMode}|${rangePreset}|${startDate}|${endDate}|${topAssetCount}`;
   const [draftSelection, setDraftSelection] = useState<{
@@ -283,7 +281,8 @@ export function HistoryExplorer({
             {hasCustomRange ? (
               <div className="flex flex-wrap items-center gap-2">
                 <span className="af-text-muted text-sm font-medium">
-                  {formatSelectionLabel(startDate)} - {formatSelectionLabel(endDate)}
+                  {formatCalendarDateLabel(startDate, settings.timeZone, settings.dateFormatPreference)} -{" "}
+                  {formatCalendarDateLabel(endDate, settings.timeZone, settings.dateFormatPreference)}
                 </span>
                 <Link
                   href={buildHistoryHref(basePath, {
