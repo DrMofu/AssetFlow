@@ -1617,40 +1617,93 @@ export function AssetsDatabase({
                           <span className="af-card-soft inline-flex w-fit whitespace-nowrap rounded-full px-3 py-1 text-xs font-medium">
                             {typeLabel(detail.asset.type)}
                           </span>
+                          {detail.asset.totalProfitLoss != null && detail.asset.profitLossCurrency ? (
+                            <span className="group relative inline-flex">
+                              <span
+                                tabIndex={0}
+                                className={detail.asset.totalProfitLoss >= 0
+                                  ? "af-card-soft af-text-up inline-flex w-fit cursor-default whitespace-nowrap rounded-full px-3 py-1 text-xs font-medium outline-none"
+                                  : "af-card-soft af-text-down inline-flex w-fit cursor-default whitespace-nowrap rounded-full px-3 py-1 text-xs font-medium outline-none"}
+                              >
+                                总盈利{" "}
+                                <SensitiveValue
+                                  value={formatCurrency(detail.asset.totalProfitLoss, detail.asset.profitLossCurrency)}
+                                  className="font-semibold"
+                                />
+                              </span>
+                              <span
+                                role="tooltip"
+                                className="af-card invisible absolute left-0 top-full z-20 mt-2 grid min-w-44 gap-2 rounded-2xl px-3 py-2 text-xs opacity-0 shadow-lg transition group-focus-within:visible group-focus-within:opacity-100 group-hover:visible group-hover:opacity-100"
+                              >
+                                <span className="flex items-center justify-between gap-4 whitespace-nowrap">
+                                  <span className="af-text-muted">已变现</span>
+                                  <SensitiveValue
+                                    value={formatCurrency(detail.asset.realizedProfitLoss ?? 0, detail.asset.profitLossCurrency)}
+                                    className={(detail.asset.realizedProfitLoss ?? 0) >= 0 ? "af-text-up font-semibold" : "af-text-down font-semibold"}
+                                  />
+                                </span>
+                                <span className="flex items-center justify-between gap-4 whitespace-nowrap">
+                                  <span className="af-text-muted">未变现</span>
+                                  <SensitiveValue
+                                    value={formatCurrency(detail.asset.unrealizedProfitLoss ?? 0, detail.asset.profitLossCurrency)}
+                                    className={(detail.asset.unrealizedProfitLoss ?? 0) >= 0 ? "af-text-up font-semibold" : "af-text-down font-semibold"}
+                                  />
+                                </span>
+                              </span>
+                            </span>
+                          ) : null}
                         </div>
                         {detail.asset.type === "SECURITIES" ? (
-                          <p className="af-text-muted mt-3 text-sm">
-                            <SensitiveValue
-                              value={`${formatShareQuantity(detail.asset.quantity)} 股`}
-                            />{" "}
-                            · 现价{" "}
-                            <SensitiveValue
-                              value={formatCurrency(detail.asset.unitPrice ?? 0, detail.asset.currency)}
-                              mask={false}
-                            />
-                            {detail.asset.averageCost != null && detail.asset.averageCost > 0 ? (
-                              <>
-                                {" "}· 成本{" "}
-                                <SensitiveValue
-                                  value={formatCurrency(detail.asset.averageCost, detail.asset.currency)}
-                                  mask={false}
-                                />
-                              </>
+                          <>
+                            <p className="af-text-muted mt-3 text-sm">
+                              <SensitiveValue
+                                value={`${formatShareQuantity(detail.asset.quantity)} 股`}
+                              />{" "}
+                              · 现价{" "}
+                              <SensitiveValue
+                                value={formatCurrency(detail.asset.unitPrice ?? 0, detail.asset.currency)}
+                                mask={false}
+                              />
+                              {detail.asset.averageCost != null && detail.asset.averageCost > 0 ? (
+                                <>
+                                  {" "}· 成本{" "}
+                                  <SensitiveValue
+                                    value={formatCurrency(detail.asset.averageCost, detail.asset.currency)}
+                                    mask={false}
+                                  />
+                                </>
+                              ) : null}
+                              {" "}· 总价{" "}
+                              <SensitiveValue
+                                value={formatCurrency(detail.asset.nativeValue, detail.asset.currency)}
+                              />
+                              {detail.asset.profitLossPct != null && detail.asset.averageCost != null && detail.asset.averageCost > 0 ? (
+                                <>
+                                  {" "}·{" "}
+                                  <SensitiveValue
+                                    value={formatPercent(detail.asset.profitLossPct)}
+                                    className={detail.asset.profitLossPct >= 0 ? "af-text-up" : "af-text-down"}
+                                  />
+                                </>
+                              ) : null}
+                            </p>
+                            {detail.asset.notes || detail.asset.type === "SECURITIES" ? (
+                              <p className="af-text-muted mt-2 text-sm">
+                                {folderLabel(detail.asset.folderId, folders)} ·{" "}
+                                {detail.asset.notes || "无备注"}
+                                {detail.asset.type === "SECURITIES" && securitySyncStatusLabel(detail, settings) ? (
+                                  <>
+                                    {" "}
+                                    ·{" "}
+                                    <SensitiveValue
+                                      value={securitySyncStatusLabel(detail, settings) ?? "暂无历史价格"}
+                                      className="font-medium"
+                                    />
+                                  </>
+                                ) : null}
+                              </p>
                             ) : null}
-                            {" "}· 总价{" "}
-                            <SensitiveValue
-                              value={formatCurrency(detail.asset.nativeValue, detail.asset.currency)}
-                            />
-                            {detail.asset.profitLossPct != null && detail.asset.averageCost != null && detail.asset.averageCost > 0 ? (
-                              <>
-                                {" "}·{" "}
-                                <SensitiveValue
-                                  value={formatPercent(detail.asset.profitLossPct)}
-                                  className={detail.asset.profitLossPct >= 0 ? "af-text-up" : "af-text-down"}
-                                />
-                              </>
-                            ) : null}
-                          </p>
+                          </>
                         ) : (
                           <p className="af-text-muted mt-3 text-sm">
                             当前价值{" "}
@@ -1661,20 +1714,10 @@ export function AssetsDatabase({
                             <SensitiveValue value={formatCurrency(detail.asset.nativeValue, detail.asset.currency)} />
                           </p>
                         )}
-                        {detail.asset.notes || detail.asset.type === "SECURITIES" ? (
+                        {detail.asset.type !== "SECURITIES" && detail.asset.notes ? (
                           <p className="af-text-muted mt-2 text-sm">
                             {folderLabel(detail.asset.folderId, folders)} ·{" "}
-                            {detail.asset.notes || "无备注"}
-                            {detail.asset.type === "SECURITIES" && securitySyncStatusLabel(detail, settings) ? (
-                              <>
-                                {" "}
-                                ·{" "}
-                                <SensitiveValue
-                                  value={securitySyncStatusLabel(detail, settings) ?? "暂无历史价格"}
-                                  className="font-medium"
-                                />
-                              </>
-                            ) : null}
+                            {detail.asset.notes}
                           </p>
                         ) : null}
                       </div>

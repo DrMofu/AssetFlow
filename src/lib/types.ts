@@ -198,6 +198,10 @@ export interface AssetSummary {
   averageCost?: number;
   profitLoss?: number;
   profitLossPct?: number;
+  totalProfitLoss?: number;
+  realizedProfitLoss?: number;
+  unrealizedProfitLoss?: number;
+  profitLossCurrency?: CurrencyCode;
   symbol?: string | null;
   autoPriceEnabled?: boolean;
   priceSyncState?: SecurityPriceSyncState;

@@ -52,6 +52,13 @@ type SecurityReplayState = {
   latestRecordDate?: string;
 };
 
+type SecurityProfitLossSummary = {
+  totalProfitLoss: number;
+  realizedProfitLoss: number;
+  unrealizedProfitLoss: number;
+  profitLossCurrency: CurrencyCode;
+};
+
 const SECURITY_QUANTITY_EPSILON = 0.0001;
 
 function sortRecordsAsc(records: AssetRecord[]) {
@@ -230,6 +237,87 @@ function replaySecurityRecords(records: AssetRecord[], targetDate: string) {
   }
 
   return state;
+}
+
+function calculateTradeOnlySecurityProfitLoss(
+  asset: Asset,
+  records: AssetRecord[],
+  groupedRates: Map<string, FxRateSnapshot[]>,
+  groupedSecurityPrices: Map<string, SecurityPriceHistoryRow[]>,
+  baseCurrency: CurrencyCode,
+  targetDate: string,
+): SecurityProfitLossSummary | undefined {
+  if (asset.type !== "SECURITIES") {
+    return undefined;
+  }
+
+  if (records.some((record) => record.recordType === "STOCK_SNAPSHOT")) {
+    return undefined;
+  }
+
+  const securityRecords = sortRecordsAsc(
+    records.filter((record) => record.recordType !== "VALUE_SNAPSHOT" && toDayKey(record.recordDate) <= toDayKey(targetDate)),
+  );
+  if (!securityRecords.length) {
+    return undefined;
+  }
+
+  let quantity = 0;
+  let averageCost = 0;
+  let unitPrice = 0;
+  let realizedProfitLoss = 0;
+  let symbol: string | null = null;
+
+  for (const record of securityRecords) {
+    if (record.recordType !== "STOCK_TRADE") {
+      continue;
+    }
+
+    if (record.side === "BUY") {
+      const nextQuantity = quantity + record.quantity;
+      averageCost =
+        nextQuantity === 0
+          ? 0
+          : (quantity * averageCost + record.quantity * record.unitPrice) / nextQuantity;
+      quantity = normalizeSecurityQuantity(nextQuantity);
+    } else {
+      const realizedQuantity = Math.min(record.quantity, quantity);
+      realizedProfitLoss += realizedQuantity * (record.unitPrice - averageCost);
+      quantity = normalizeSecurityQuantity(Math.max(0, quantity - record.quantity));
+      if (quantity === 0) {
+        averageCost = 0;
+      }
+    }
+
+    unitPrice = record.unitPrice;
+    symbol = record.symbol ?? symbol;
+  }
+
+  const autoPrice = resolveSecurityClose(groupedSecurityPrices, symbol, targetDate);
+  const effectiveUnitPrice = autoPrice ?? unitPrice;
+  const unrealizedProfitLoss = quantity * (effectiveUnitPrice - averageCost);
+
+  const convertedRealized = convertAmountAtDate(
+    roundCurrency(realizedProfitLoss),
+    asset.currency,
+    baseCurrency,
+    groupedRates,
+    targetDate,
+  );
+  const convertedUnrealized = convertAmountAtDate(
+    roundCurrency(unrealizedProfitLoss),
+    asset.currency,
+    baseCurrency,
+    groupedRates,
+    targetDate,
+  );
+
+  return {
+    totalProfitLoss: roundCurrency(convertedRealized + convertedUnrealized),
+    realizedProfitLoss: convertedRealized,
+    unrealizedProfitLoss: convertedUnrealized,
+    profitLossCurrency: baseCurrency,
+  };
 }
 
 function evaluateAssetAtDate(
@@ -590,6 +678,14 @@ function buildAssetSummary(
       : autoPriceEnabled
         ? (coverageIsPartial ? "partial" : priceCoverage ? priceCoverage.state : alphaVantageEnabled ? "not_synced" : "missing_api_key")
         : "manual";
+  const tradeOnlyProfitLoss = calculateTradeOnlySecurityProfitLoss(
+    asset,
+    records,
+    groupedRates,
+    groupedSecurityPrices,
+    baseCurrency,
+    targetDate,
+  );
 
   return {
     id: asset.id,
@@ -609,6 +705,10 @@ function buildAssetSummary(
     averageCost: evaluated.averageCost,
     profitLoss: evaluated.profitLoss,
     profitLossPct: evaluated.profitLossPct,
+    totalProfitLoss: tradeOnlyProfitLoss?.totalProfitLoss,
+    realizedProfitLoss: tradeOnlyProfitLoss?.realizedProfitLoss,
+    unrealizedProfitLoss: tradeOnlyProfitLoss?.unrealizedProfitLoss,
+    profitLossCurrency: tradeOnlyProfitLoss?.profitLossCurrency,
     symbol: evaluated.symbol ?? null,
     autoPriceEnabled,
     priceSyncState,
