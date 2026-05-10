@@ -1,5 +1,10 @@
 import { syncFxDailyHistory } from "@/lib/fx-rates";
-import { enqueueSyncTask } from "@/lib/sync-queue";
+import {
+  clearSecuritySyncCooldown,
+  enqueueSyncTask,
+  getSecuritySyncCooldown,
+  recordSecuritySyncCooldown,
+} from "@/lib/sync-queue";
 import { syncSecurityPriceHistory } from "@/lib/security-prices";
 import { getLatestFxAvailableDayKey, getLatestUsMarketSessionDayKey } from "@/lib/utils";
 import type { Asset, AssetRecord, FxRateSnapshot, SecurityHoldingPeriod, SecurityPriceHistoryRow } from "@/lib/types";
@@ -18,6 +23,11 @@ function sortRecordsAsc(records: AssetRecord[]) {
 
 function normalizeSecurityQuantity(quantity: number) {
   return Math.abs(quantity) < SECURITY_QUANTITY_EPSILON ? 0 : quantity;
+}
+
+function normalizeSecuritySymbol(symbol?: string | null) {
+  const normalized = symbol?.trim().toUpperCase();
+  return normalized ? normalized : null;
 }
 
 function buildSecurityHoldingPeriods(records: AssetRecord[]) {
@@ -116,6 +126,20 @@ function shouldSyncSecurityPriceHistory(
   });
 }
 
+function getExpectedSecurityCoverageEnd(holdingPeriods: SecurityHoldingPeriod[]) {
+  const today = getLatestUsMarketSessionDayKey();
+  const expectedEnds = holdingPeriods
+    .filter((period) => !period.endDate || period.endDate > period.startDate)
+    .map((period) => period.endDate ?? today)
+    .sort((left, right) => right.localeCompare(left));
+
+  return expectedEnds[0] ?? today;
+}
+
+function hasSecurityCoverageThrough(coverageEnd: string | undefined, expectedEnd: string) {
+  return Boolean(coverageEnd && coverageEnd >= expectedEnd);
+}
+
 function shouldSyncFxHistory(earliestRecordDate: string, fxRateSnapshots: FxRateSnapshot[]) {
   const usdToCnyRows = [...fxRateSnapshots]
     .filter((row) => row.baseCurrency === "USD" && row.quoteCurrency === "CNY")
@@ -147,6 +171,7 @@ export async function schedulePortfolioSync(
   groupedRecords: Map<string, AssetRecord[]>,
   groupedSecurityPrices: Map<string, SecurityPriceHistoryRow[]>,
   fxRateSnapshots: FxRateSnapshot[],
+  options?: { forceSecuritySync?: boolean },
 ) {
   const allRecords = Array.from(groupedRecords.values()).flat();
   const earliestRecordDate = sortRecordsAsc(allRecords)[0]?.recordDate;
@@ -178,7 +203,7 @@ export async function schedulePortfolioSync(
         (record): record is Extract<AssetRecord, { recordType: "STOCK_TRADE" | "STOCK_SNAPSHOT" }> =>
           record.recordType !== "VALUE_SNAPSHOT" && Boolean(record.symbol),
       );
-    const symbol = symbolRecord?.symbol;
+    const symbol = normalizeSecuritySymbol(symbolRecord?.symbol);
 
     if (!earliestSecurityRecord?.recordDate || !symbol) {
       continue;
@@ -189,16 +214,47 @@ export async function schedulePortfolioSync(
       continue;
     }
 
+    if (!options?.forceSecuritySync) {
+      const cooldown = await getSecuritySyncCooldown(symbol);
+      if (cooldown) {
+        continue;
+      }
+    }
+
+    const expectedEnd = getExpectedSecurityCoverageEnd(holdingPeriods);
+    const label = `${symbol} 日价格`;
+
     await enqueueSyncTask({
       key: `security:${symbol}`,
       kind: "security_price",
-      label: `${symbol} 日价格`,
+      label,
+      maxAttempts: 1,
       run: async () => {
-        await syncSecurityPriceHistory({
-          symbol,
-          startDate: earliestSecurityRecord.recordDate,
-          holdingPeriods,
-        });
+        try {
+          const coverage = await syncSecurityPriceHistory({
+            symbol,
+            startDate: earliestSecurityRecord.recordDate,
+            holdingPeriods,
+          });
+
+          if (hasSecurityCoverageThrough(coverage?.coverageEnd, expectedEnd)) {
+            await clearSecuritySyncCooldown(symbol);
+            return;
+          }
+
+          await recordSecuritySyncCooldown({
+            symbol,
+            label,
+            reason: `数据源暂未返回 ${expectedEnd} 的价格`,
+          });
+        } catch (error) {
+          await recordSecuritySyncCooldown({
+            symbol,
+            label,
+            reason: error instanceof Error ? error.message : "证券价格同步失败",
+          });
+          throw error;
+        }
       },
     });
   }

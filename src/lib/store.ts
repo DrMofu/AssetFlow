@@ -280,6 +280,17 @@ function normalizeSyncStatus(raw: Partial<SyncStatusSnapshot> | null | undefined
     runningCount: Number(raw?.runningCount ?? 0),
     lastError: raw?.lastError ?? undefined,
     tasks: Array.isArray(raw?.tasks) ? raw.tasks : [],
+    securityCooldowns: Array.isArray(raw?.securityCooldowns)
+      ? raw.securityCooldowns
+          .filter((item) => Boolean(item?.symbol && item?.nextAllowedAt))
+          .map((item) => ({
+            symbol: item.symbol.trim().toUpperCase(),
+            label: item.label || `${item.symbol.trim().toUpperCase()} 日价格`,
+            lastAttemptAt: item.lastAttemptAt ?? new Date(0).toISOString(),
+            nextAllowedAt: item.nextAllowedAt,
+            reason: item.reason ?? undefined,
+          }))
+      : [],
   };
 }
 

@@ -185,9 +185,11 @@ export function DataSyncStatusForm({
   const { settings } = useAppPreferences();
   const timeZone = settings.timeZone;
   const dateFormatPreference = settings.dateFormatPreference;
+  const { showToast } = useToast();
   const [overview, setOverview] = useState(initialOverview);
   const [queue, setQueue] = useState(initialQueue);
   const [pollError, setPollError] = useState<string | null>(null);
+  const [forceRetrySubmitting, setForceRetrySubmitting] = useState(false);
 
   useEffect(() => {
     setOverview(initialOverview);
@@ -234,6 +236,28 @@ export function DataSyncStatusForm({
   }, []);
 
   const activeTasks = queue.tasks.filter((task) => task.state !== "succeeded");
+  const securityCooldowns = queue.securityCooldowns ?? [];
+
+  async function handleForceRetryFailed() {
+    setForceRetrySubmitting(true);
+
+    try {
+      const payload = (await postJson("/api/system/sync-status", {
+        action: "force_retry_failed",
+      })) as {
+        overview: DataSyncOverview;
+        queue: SyncStatusSnapshot;
+      };
+      setOverview(payload.overview);
+      setQueue(payload.queue);
+      setPollError(null);
+      showToast("已强制重新排队失败的数据同步", { tone: "success" });
+    } catch (submitError) {
+      showToast(submitError instanceof Error ? submitError.message : "强制重试失败", { tone: "error" });
+    } finally {
+      setForceRetrySubmitting(false);
+    }
+  }
 
   return (
     <div className="af-card grid gap-4 rounded-[32px] p-6 md:p-7">
@@ -241,9 +265,19 @@ export function DataSyncStatusForm({
         <p className="text-xl font-semibold" style={{ color: "var(--text-primary)" }}>
           数据同步状态
         </p>
-        <span className="af-button-secondary rounded-full px-3 py-1 text-xs font-medium">
-          排队 {queue.queueLength} · 运行中 {queue.runningCount}
-        </span>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => void handleForceRetryFailed()}
+            disabled={forceRetrySubmitting}
+            className="af-button-primary rounded-full px-4 py-2 text-xs font-semibold disabled:opacity-60"
+          >
+            {forceRetrySubmitting ? "重试中..." : "强制重试失败数据"}
+          </button>
+          <span className="af-button-secondary rounded-full px-3 py-1 text-xs font-medium">
+            排队 {queue.queueLength} · 运行中 {queue.runningCount}
+          </span>
+        </div>
       </div>
 
       <DataSyncOverviewCards
@@ -266,6 +300,27 @@ export function DataSyncStatusForm({
         {!pollError && queue.lastError ? <p className="mt-4 text-sm text-rose-600">{queue.lastError}</p> : null}
 
         <div className="mt-4 max-h-[460px] space-y-3 overflow-y-auto pr-1">
+          {securityCooldowns.map((cooldown) => (
+            <div key={`cooldown:${cooldown.symbol}`} className="rounded-[18px] border px-4 py-3" style={{ borderColor: "var(--border-color)" }}>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+                    {cooldown.label}
+                  </p>
+                  <p className="af-text-muted mt-1 text-xs">
+                    自动抓取冷却中 · 上次尝试 {formatDateTimeLabel(cooldown.lastAttemptAt, timeZone, dateFormatPreference)}
+                  </p>
+                </div>
+                <span className="af-text-muted text-xs">
+                  下次自动抓取 {formatDateTimeLabel(cooldown.nextAllowedAt, timeZone, dateFormatPreference)}
+                </span>
+              </div>
+              {cooldown.reason ? (
+                <p className="mt-2 text-xs text-rose-600">{cooldown.reason}</p>
+              ) : null}
+            </div>
+          ))}
+
           {activeTasks.length ? (
             activeTasks.map((task) => (
               <div key={task.key} className="rounded-[18px] border px-4 py-3" style={{ borderColor: "var(--border-color)" }}>
@@ -290,7 +345,9 @@ export function DataSyncStatusForm({
               </div>
             ))
           ) : (
-            <p className="af-text-muted text-sm">当前没有正在排队或运行中的同步任务。</p>
+            !securityCooldowns.length ? (
+              <p className="af-text-muted text-sm">当前没有正在排队或运行中的同步任务。</p>
+            ) : null
           )}
         </div>
       </div>

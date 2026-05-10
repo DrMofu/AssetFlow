@@ -349,12 +349,21 @@ export interface SyncTaskStatus {
   errorMessage?: string;
 }
 
+export interface SecuritySyncCooldownStatus {
+  symbol: string;
+  label: string;
+  lastAttemptAt: string;
+  nextAllowedAt: string;
+  reason?: string;
+}
+
 export interface SyncStatusSnapshot {
   updatedAt: string;
   queueLength: number;
   runningCount: number;
   lastError?: string;
   tasks: SyncTaskStatus[];
+  securityCooldowns: SecuritySyncCooldownStatus[];
 }
 
 export interface HistorySeriesRow {

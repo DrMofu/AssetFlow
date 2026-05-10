@@ -1254,6 +1254,31 @@ export async function getDataSyncOverview(baseCurrency: CurrencyCode): Promise<D
   };
 }
 
+export async function forceRetryFailedDataSync() {
+  const repository = getRepository();
+  const [assets, records, fxRateSnapshots, securityPriceHistory] = await Promise.all([
+    repository.listAssets(),
+    repository.listAssetRecords(),
+    repository.listFxRateSnapshots(),
+    repository.listSecurityPriceHistory(),
+  ]);
+
+  const groupedRecords = new Map<string, AssetRecord[]>();
+  for (const record of records) {
+    const current = groupedRecords.get(record.assetId) ?? [];
+    current.push(record);
+    groupedRecords.set(record.assetId, current);
+  }
+
+  await schedulePortfolioSync(
+    assets,
+    groupedRecords,
+    groupSecurityPricesBySymbol(securityPriceHistory),
+    fxRateSnapshots,
+    { forceSecuritySync: true },
+  );
+}
+
 export type CalendarDayContributor = {
   assetId: string;
   name: string;
